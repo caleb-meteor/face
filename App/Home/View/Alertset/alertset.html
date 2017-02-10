@@ -1,0 +1,407 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.save_cycle_dataUrl = "{:$url['save_cycle_dataUrl']}";
+//与子窗口交互
+thisPageThings.alert_cycleid = null;
+thisPageThings.start_select = false;
+thisPageThings.start_selected= false;
+thisPageThings.cycle_select_data = [];
+thisPageThings.intvalid = null;
+//基本的搜索
+thisPageThings.show = function(){
+    $('#searchForm').form('reset');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+//接收数据之后的操作
+thisPageThings.callback = function(data){
+   // data = eval('('+data+')');
+    $.messager.alert('操作提示',data.message,'info');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+//打开增加dialog
+thisPageThings.addBar = function(){
+	$('#addDialog').dialog('open');
+}
+//打开编辑dialog
+thisPageThings.editBar = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    if(infos.length > 1){
+        $.messager.alert('操作提示','请选择单个进行操作','info');
+        return false;
+    }
+    if(infos.length == 1){
+        $('#editForm').form('load',infos[0]);
+        $('#editDialog').dialog('open');
+    }
+}
+//提交增加
+thisPageThings.add = function(){
+    $('#addForm').form('submit',{
+        onSubmit:function(){
+            var validate =  $(this).form('validate');
+            if(validate){
+                var btime = $('#add_btime').datetimebox('getValue');
+                var etime = $('#add_etime').datetimebox('getValue');
+                btime = formatDate(btime);
+                etime = formatDate(etime);
+                now_time = new Date();
+                if(checkTime(now_time,btime) || checkTime(btime,etime)){
+                    $.messager.alert('信息提示','开始时间必须大于当前时间,截至时间必须大于开始时间','info');
+                    return false;
+                }
+            }else{
+                return validate;
+            }
+        },
+        url:thisPageThings.addUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#addDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                rand:Math.random()
+            });
+        }
+    });
+}
+//提交编辑
+thisPageThings.edit = function(){
+    $('#editForm').form('submit',{
+        onSubmit:function(){
+            var validate =  $(this).form('validate');
+            if(validate){
+                var btime = $('#edit_btime').datetimebox('getValue');
+                var etime = $('#edit_etime').datetimebox('getValue');
+                btime = formatDate(btime);
+                etime = formatDate(etime);
+                if(checkTime(btime,etime)){
+                    $.messager.alert('信息提示','截至时间必须大于开始时间','info');
+                    return false;
+                }
+            }else{
+                return validate;
+            }
+        },
+        url:thisPageThings.editUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#editDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                rand:Math.random()
+            });
+        }
+    });
+}
+//删除事件
+thisPageThings.remove = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    var ids = [];
+    if(infos.length == 0)
+        return false;
+
+    $.each(infos,function(n,m){
+        var id= m.alertsetid;
+        ids.push(id);
+    });
+    ids = ids.join(',');
+    $.ajax({
+        url:thisPageThings.removeUrl,
+        type:'post',
+        data:{
+            alertsetid:ids
+        },
+        success:function(data){
+            thisPageThings.callback(data);
+        }
+    });
+}
+//搜索事件
+thisPageThings.search = function(){
+    var name = $('#name').val();
+    name = $.trim(name);
+    $('#datagrid').datagrid('load',{
+        name:name
+    });
+}
+thisPageThings.set_alert_type = function(){
+    $.ajax({
+        url:thisPageThings.editUrl,
+        type:'get',
+        data:{
+            alertsetid:thisPageThings.alert_cycleid,
+            alerttype:'0'
+        },
+        success:function(data){
+            thisPageThings.callback(data);
+            $('#cycleDialog').dialog('close');
+        }
+    })
+}
+
+thisPageThings.cycle = function(){
+    thisPageThings.start_select = true;
+    $.messager.progress({
+        title:'操作提示',
+        msg:'正在获取数据...',
+        interval:200
+    });
+    thisPageThings.intvalid = setInterval(save_cycle_data, 2000);
+}
+//保存数据
+function save_cycle_data () {
+    //console.log(thisPageThings.intvalid);
+    //当选择完毕执行完立即结束
+    if(thisPageThings.start_selected){
+        thisPageThings.start_selected = false;
+        clearInterval(thisPageThings.intvalid);
+        //数据不为空的时候进行交互
+        if(thisPageThings.cycle_select_data.length > 0){
+            $.messager.progress('close');
+            cycleids = new Array();
+            $.each(thisPageThings.cycle_select_data,function(n,m){
+                cycleids.push(m.alertcycleid);
+            })
+            alertcycles = cycleids.join(',');
+            $.ajax({
+                url:thisPageThings.save_cycle_dataUrl,
+                type:'get',
+                data:{
+                    alertsetid:thisPageThings.alert_cycleid,
+                    alertcycles:alertcycles
+                },
+                success:function (data) {
+                    thisPageThings.cycle_select_data = [];
+                    $('#cycleDialog').dialog('close');
+                    thisPageThings.callback(data);
+                }
+            });
+            //setTimeout(function () {
+               //console.log(thisPageThings.cycle_select_data,thisPageThings.save_cycle_dataUrl);
+            //}, 5000);
+        }else{
+            $.messager.progress('close');
+            $.messager.alert('结果提示','未选中数据无法保存','info');
+        }
+    }
+}
+
+function checkDev(v,r,i){
+    var fies = {:$info['devJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.devid == v){
+            name = m.devname;
+        }
+    });
+    return name;
+}
+function checkPhotolib(v,r,i){
+    var fies = {:$info['photolibJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.libid == v){
+            name = m.libname;
+        }
+    });
+    return name;
+}
+function checkAlerttype(v,r,i){
+    var s = v == '0' ? '时间布控' : '周期布控';
+    return '<div style="color:#0E2D5F;cursor:pointer;">'+s+'</div>';
+}
+function checkState(v,r,i){
+    return v == '0' ? '×' : '√';
+}
+//初始化表格
+$(function(){
+	$('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        queryParams:{
+            rand:Math.random()
+        },
+        title:'列表',
+        fitColumns:true,
+        rownumbers:true,
+        fit:true,
+        pageSize:15,
+        pageNumber:1,
+        pageList:[2,5,10,15,20,25,30,40,50],
+        onClickCell:function(r,f,v){
+            var rowData = $(this).datagrid('getData').rows[r];
+            thisPageThings.alert_cycleid = rowData.alertsetid;
+            //console.log(thisPageThings.alert_cycleid);
+            if(f == 'alerttype'){
+                if($('iframe').attr('src')==''){
+                    var load_url = "{:U('Alertcycle/index')}"+'?alertsetid='+thisPageThings.alert_cycleid;
+                    $('iframe').attr('src',"{:U('Alertcycle/index')}");
+                }
+                $('#cycleDialog').dialog('open');
+            }
+        },
+        columns:[[
+        {field:'alertsetid',title:'布控id',checkbox:true},
+        {field:'name',title:'方案名称',width:200,align:'center'},
+        {field:'devid',title:'布控设备',width:200,align:'center',formatter:checkDev},
+        {field:'libid',title:'布控底库',width:200,align:'center',formatter:checkPhotolib},
+        {field:'score',title:'相似度阈值',width:200,align:'center'},
+        {field:'alerttype',title:'布控类型',width:200,align:'center',formatter:checkAlerttype},
+        {field:'btime',title:'开始时间',align:'center'},
+        {field:'etime',title:'截止时间',align:'center'},
+        {field:'state',title:'是否启用',width:200,align:'center',formatter:checkState}
+        ]],
+        pagination:true
+    });
+
+});
+</script>
+</block>
+<block name="main">
+    <div class="easyui-layout" fit="true">
+        <!-- <div data-options="region:'west',title:'所有服务',iconCls:'icon-drive',split:false" style="width:20%;background:#eee;">
+            <include file="Serinfo/ser_tree"/>
+        </div> -->
+       <div data-options="region:'center',border:false,iconCls:'icon-film'" style="width:80%;background:#eee;">
+           <table id="datagrid" toolbar="#toolbar"></table>
+       </div>
+       <div data-options="region:'east',title:'说明',iconCls:'icon-film'" style="width:20%;background:#eee;">
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span style="color:#0E5AB9;">数据增加：<br>开始时间必须大于当前时间,截至时间必须大于开始时间</span><br>
+                <span style="color:red;">添加时默认为时间布控,若需要周期布控可点添加后点击布控类型改变。周期布控是在设置的时间段内的</span>
+            </p>
+       </div>
+    </div>
+
+    <div id="toolbar">
+        <form id="searchForm" method="post" style="margin-top: 3px;" novalidate>
+             <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon icon-filter" plain="true" onclick="thisPageThings.show()">全部</a>&nbsp;&nbsp;&nbsp;
+                方案名称: <input id="name"  class="easyui-textbox" data-options="height:22"  style="width:168px;"/>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true" onclick="thisPageThings.search()">搜索</a>
+        </form>
+        <a href="javascript:void(0)" onclick="thisPageThings.addBar()" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true">添加</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.editBar()" class="easyui-linkbutton" data-options="iconCls:'icon icon-edit',plain:true">修改</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.remove()" class="easyui-linkbutton" data-options="iconCls:'icon icon-delete',plain:true">
+        删除</a>
+    </div>
+<!-- 增加 -->
+    <div id="addDialog" class="easyui-dialog" title="添加" buttons="#addButtons"
+        data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+    	<form id="addForm" method="post">
+            <div class="form_m" style="display: none;"><div for="alertsetid" class="form_label">布控id : </div>
+                <input class="form_in easyui-textbox" type="text" name="alertsetid"/></div>
+            <div class="form_m"><div for="name" class="form_label">方案名称 : </div>
+                <input class="form_in easyui-textbox" type="text" name="name" required="true"/></div>
+            <div class="form_m"><div for="devid" class="form_label">设备 : </div>
+                <select class="form_in easyui-combobox" name="devid" required="true">
+                    <foreach name="info['dev']" item="dev">
+                        <option value="{$dev['devid']}">{$dev['devname']}</option>
+                    </foreach>
+                </select>
+            </div>
+            <div class="form_m"><div for="libid" class="form_label">底库 : </div>
+                <select class="form_in easyui-combobox" name="libid" required="true">
+                    <foreach name="info['photolib']" item="photolib">
+                        <option value="{$photolib['libid']}">{$photolib['libname']}</option>
+                    </foreach>
+                </select>
+            </div>
+            <div class="form_m"><div for="score" class="form_label">相似度阈值 : </div>
+                <input class="form_in easyui-numberbox" type="text" name="score" value="70" data-options="min:0,max:100"/></div>
+            <!-- <div class="form_m"><div for="alerttype" class="form_label">布控类型 : </div>
+                <select class="form_in easyui-combobox" name="alerttype" id="add_alerttype">
+                    <option value="0">时间布控</option>
+                    <option value="1">周期布控</option>
+                </select>
+            </div> -->
+            <div class="form_m"><div for="btime" class="form_label">开始时间 : </div>
+                <input class="form_in easyui-datetimebox" id="add_btime" type="text" name="btime" data-options="editable:false" required="true" /></div>
+            <div class="form_m"><div for="etime" class="form_label">截止时间 : </div>
+                <input class="form_in easyui-datetimebox" id="add_etime" type="text" name="etime" data-options="editable:false" required="true"/></div>
+            <div class="form_m"><div for="state" class="form_label">是否启用 : </div>
+                <select class="form_in easyui-combobox" name="state">
+                    <option value="1">是</option>
+                    <option value="0">否</option>
+                </select>
+            </div>
+    	</form>
+    </div>
+    <div id="addButtons">
+    	<a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.add()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                $('#addDialog').dialog('close')" style="width:90px;">取消</a>
+    </div>
+<!-- 修改 -->
+    <div id="editDialog" class="easyui-dialog" title="修改" buttons="#editButtons"
+        data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+        <form id="editForm" method="post">
+            <div class="form_m" style="display: none"><div for="alertsetid" class="form_label">布控id : </div>
+                <input class="form_in easyui-textbox" type="text" name="alertsetid"/></div>
+            <div class="form_m"><div for="name" class="form_label">方案名称 : </div>
+                <input class="form_in easyui-textbox" type="text" name="name" required="true"/></div>
+            <div class="form_m"><div for="devid" class="form_label">设备 : </div>
+                <select class="form_in easyui-combobox" name="devid" required="true">
+                    <foreach name="info['dev']" item="dev">
+                        <option value="{$dev['devid']}">{$dev['devname']}</option>
+                    </foreach>
+                </select>
+            </div>
+            <div class="form_m"><div for="libid" class="form_label">底库 : </div>
+                <select class="form_in easyui-combobox" name="libid" required="true">
+                    <foreach name="info['photolib']" item="photolib">
+                        <option value="{$photolib['libcode']}">{$photolib['libname']}</option>
+                    </foreach>
+                </select>
+            </div>
+            <div class="form_m"><div for="score" class="form_label">相似度阈值 : </div>
+                <input class="form_in easyui-numberbox" type="text" name="score" value="70" data-options="min:0,max:100"/></div>
+            <!-- <div class="form_m"><div for="alerttype" class="form_label">布控类型 : </div>
+                <select class="form_in easyui-combobox" name="alerttype">
+                    <option value="0">时间布控</option>
+                    <option value="1">周期布控</option>
+                </select>
+            </div> -->
+            <div class="form_m"><div for="btime" class="form_label">开始时间 : </div>
+                <input class="form_in easyui-datetimebox" id="edit_btime" type="text" name="btime" data-options="editable:false" required="true"/>
+            </div>
+            <div class="form_m"><div for="etime" class="form_label">截止时间 : </div>
+                <input class="form_in easyui-datetimebox" id="edit_etime" type="text" name="etime" data-options="editable:false" required="true"/>
+            </div>
+            <div class="form_m"><div for="state" class="form_label">是否启用 : </div>
+                <select class="form_in easyui-combobox" name="state" data-options="editable:false">
+                    <option value="1">是</option>
+                    <option value="0">否</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    <div id="editButtons">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.edit()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                $('#editDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+    <div id="cycleDialog" class="easyui-dialog" title="选择周期规则" buttons="#cycleButtons"
+        data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true,width:500,height:400">
+        <iframe id="cycle" src="" frameborder="0" style="width: 470px;height: 320px;padding: 2px 0 0 8px;">  </iframe>
+    </div>
+     <div id="cycleButtons">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-page_white_wrench" onclick="thisPageThings.set_alert_type()">
+        设为时间布控</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.cycle()" style="width:90px;">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                $('#cycleDialog').dialog('close')" style="width:90px;">取消</a>
+    </div>
+</block>

@@ -1,0 +1,58 @@
+<script>
+function c_url(v,r,i){
+    return '<div style="color:#0E2D5F;cursor:pointer;">点击查看<input type="text" style="display:none;" value="'+v+'"></div>';
+}
+
+$(function(){
+	$('#datagrid').datagrid({
+        url:"{:U('Alertrecord/datalist')}",
+        method:'get',
+        title:'告警记录',
+        fitColumns:true,
+        rownumbers:true,
+        singleSelect:true,
+        fit:true,
+        onClickCell:function(r,f,v){
+            if(f=='bodypicurl' || f=='facepicurl' || f=='alertpicurl'){
+                $('#show_img').attr('src',v);
+                $('#img_dialog').dialog('open');
+                $('#CMyControl').hide();
+            }
+            if(f == 'name'){
+                var rowData = $(this).datagrid('getData').rows[r];
+                $('#show_img').attr('src',rowData.photo);
+                $('#img_dialog').dialog('open');
+                $('#CMyControl').hide();
+            }
+
+        },
+
+        pageSize:7,
+        pageNumber:1,
+        // pageList:[2,5,10,15,20,25,30,40,50],
+        columns:[[
+        {field:'alertrecordid',title:'告警记录id',hidden:true},
+        {field:'alerttime',title:'告警时间',align:'center'},
+        {field:'bodypicurl',title:'全身图片',width:200,align:'center',formatter:c_url},
+        {field:'facepicurl',title:'面部特写',width:200,align:'center',formatter:c_url},
+        {field:'name',title:'被告警人员',width:200,align:'center'},
+        {field:'alertpicurl',title:'被告警图片',width:200,align:'center',formatter:c_url},
+        {field:'score',title:'相识度',width:200,align:'center'},
+        {field:'devname',title:'拍摄相机',width:200,align:'center'},
+        {field:'sername',title:'服务器',width:200,align:'center'}
+        //{field:'capresultid',title:'抓拍记录',width:200,align:'center'}
+        ]]
+        // pagination:true
+    });
+    $('#img_dialog').panel({
+        onClose:function(){
+            $('#CMyControl').show();
+        }
+    });
+});
+</script>
+<table id="datagrid" toolbar="#toolbar"></table>
+<div id="img_dialog" class="easyui-dialog" title="图片查看"
+    data-options="iconCls:'icon-save',resizable:true,modal:false,closed:true,shadow:false">
+    <img src=""  id="show_img" width="400px">
+</div>

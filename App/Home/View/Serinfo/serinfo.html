@@ -1,0 +1,247 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.load_pser_commboxUrl = "{:$url['load_commboxUrl']}";
+thisPageThings.checkClick = true;
+//基本的搜索
+thisPageThings.show = function(){
+    $('#searchForm').form('reset');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+//接收数据之后的操作
+thisPageThings.callback = function(data){
+   // data = eval('('+data+')');
+    $.messager.alert('操作提示',data.message,'info');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+//打开增加dialog
+thisPageThings.addBar = function(){
+	$('#addDialog').dialog('open');
+}
+//打开编辑dialog
+thisPageThings.editBar = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    if(infos.length > 1){
+        $.messager.alert('操作提示','请选择单个进行操作','info');
+        return false;
+    }
+    if(infos.length == 1){
+        thisPageThings.change_pser(infos[0].typeid,'#pserid');
+        $('#make_sure').attr('onclick','thisPageThings.edit()');
+        $('#addDialog').dialog({
+            title:'修改'
+        });
+        $('#addForm').form('load',infos[0]);
+        if(infos[0].pserid != null){
+            var pserids = infos[0].pserid.split(',');
+            $('#pserid').combobox('setValues', pserids);
+        }
+        $('#addDialog').dialog('open');
+    }
+}
+//提交增加
+thisPageThings.add = function(){
+    if(thisPageThings.checkClick){
+        thisPageThings.checkClick = false;
+        $('#addForm').form('submit',{
+            url:thisPageThings.addUrl,
+            success:function(data){
+                thisPageThings.checkClick = true;
+                data = eval('('+data+')');
+                $('#addDialog').dialog('close');
+                $.messager.alert('操作提示',data.message,'info');
+                $('#datagrid').datagrid('load',{
+                    rand:Math.random()
+                });
+            }
+        });
+    }
+}
+//提交编辑
+thisPageThings.edit = function(){
+    $('#addForm').form('submit',{
+        url:thisPageThings.editUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#addDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                rand:Math.random()
+            });
+        }
+    });
+}
+//删除事件
+thisPageThings.remove = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    var ids = [];
+    if(infos.length == 0)
+        return false;
+
+    $.each(infos,function(n,m){
+        var id= m.serid;
+        ids.push(id);
+    });
+    ids = ids.join(',');
+    $.ajax({
+        url:thisPageThings.removeUrl,
+        type:'post',
+        data:{
+            serid:ids
+        },
+        success:function(data){
+            thisPageThings.callback(data);
+        }
+    });
+}
+//搜索事件
+thisPageThings.search = function(){
+    var sername = $('#sername').val();
+    sername = $.trim(sername);
+    $('#datagrid').datagrid('load',{
+        sername:sername
+    });
+}
+/**
+ * 根据选择的类型变更可选设备
+ * @param  {string} sertype  设备类型
+ * @param  {dom} document 变更的dom对象
+ * @param  {boolean} multiple 是否为多选
+ * @return {void}
+ */
+thisPageThings.change_pser = function(sertype,document){
+    var multiple = false;
+    if(sertype == '3' || sertype == '6'){
+        multiple = true;
+    }
+    $(document).combobox({
+        url:thisPageThings.load_pser_commboxUrl+'?sertype='+sertype,
+        valueField:'serid',
+        textField:'sername',
+        editable:false,
+        multiple:multiple
+    });
+}
+function ser_type(){
+    var data = new Array();
+    var fies = {:$info['devtypeJson']};
+    $.each(fies,function(n,m){
+        data.push(m);
+    });
+    $('#ser_type').combobox({
+        data:data,
+        editable:false,
+        valueField:'typeid',
+        textField:'typename',
+        onSelect:function(record){
+            thisPageThings.change_pser(record.typeid,'#pserid');
+        }
+    });
+}
+
+function checkDevtype(v,r,i){
+    var fies = {:$info['devtypeJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.typeid == v){
+            name = m.typename;
+        }
+    });
+    return name;
+}
+function checkState(v,r,i){
+    var date = new Date();
+    var state = formatDate(v);
+    var diffTime = date.getTime() - state.getTime();
+    return (diffTime > 1000*60*15) ? '<span style="color:red;">离线</span>' : '在线';
+}
+//初始化表格
+$(function(){
+	$('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        queryParams:{
+            rand:Math.random()
+        },
+        title:'列表',
+        fitColumns:true,
+        rownumbers:true,
+        fit:true,
+        pageSize:15,
+        pageNumber:1,
+        pageList:[10,15,20,25,30,40,50],
+        onClickCell:function(r,f,v){
+            if(f == 'pserid'){
+                var rowData = $(this).datagrid('getData').rows[r];
+                var serid = rowData.serid;
+            }
+        },
+        columns:[[
+        {field:'serid',title:'服务id',checkbox:true},
+        {field:'sername',title:'服务名称',width:200,align:'center'},
+        {field:'typeid',title:'服务类型',width:200,align:'center',formatter:checkDevtype},
+        {field:'serip',title:'ip地址',width:200,align:'center'},
+        {field:'serport',title:'端口号',align:'center'},
+        {field:'pserid',title:'上级/关联服务',align:'center'},
+        {field:'remark',title:'备注',width:200,align:'center'},
+        {field:'state',title:'状态',width:200,align:'center',formatter:checkState}
+        ]],
+        pagination:true
+    });
+    ser_type();
+});
+</script>
+</block>
+<block name="main">
+	<table id="datagrid" toolbar="#toolbar"></table>
+
+    <div id="toolbar">
+        <form id="searchForm" method="post" style="margin-top: 3px;" novalidate>
+             <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon icon-filter" plain="true" onclick="thisPageThings.show()">全部</a>&nbsp;&nbsp;&nbsp;
+                服务名称: <input id="sername"  class="easyui-textbox" data-options="height:22"  style="width:168px"/>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true" onclick="thisPageThings.search()">搜索</a>
+        </form>
+        <a href="javascript:void(0)" onclick="thisPageThings.addBar()" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true">添加</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.editBar()" class="easyui-linkbutton" data-options="iconCls:'icon icon-edit',plain:true">修改</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.remove()" class="easyui-linkbutton" data-options="iconCls:'icon icon-delete',plain:true">
+        删除</a>
+    </div>
+<!-- 增加 -->
+    <div id="addDialog" class="easyui-dialog" title="添加" buttons="#addButtons"
+        data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+    	<form id="addForm" method="post">
+            <div class="form_m" style="display: none"><div for="serid" class="form_label">服务id : </div>
+                <input class="form_in easyui-textbox" type="text" name="serid"/></div>
+            <div class="form_m"><div for="typeid" class="form_label">服务器类型 : </div>
+                <input id="ser_type" name="typeid" class="form_in" required="true">
+            </div>
+            <div class="form_m"><div for="pserid" class="form_label">上级/关联 : </div>
+                <input id="pserid" name="pserid[]" class="form_in easyui-combobox" required="true">
+            </div>
+            <div class="form_m"><div for="sername" class="form_label">服务名称 : </div>
+                <input class="form_in easyui-textbox" type="text" name="sername" required="true"/></div>
+            <div class="form_m"><div for="serip" class="form_label">ip地址 : </div>
+                <input class="form_in easyui-textbox" type="text" name="serip" required="true"/></div>
+            <div class="form_m"><div for="serport" class="form_label">端口号 : </div>
+                <input class="form_in easyui-numberbox" type="text" name="serport"/></div>
+            <div class="form_m"><div for="remark" class="form_label">备注 : </div>
+                <input class="form_in easyui-textbox" type="text" name="remark"/></div>
+    	</form>
+    </div>
+    <div id="addButtons">
+    	<a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" id="make_sure" onclick="thisPageThings.add()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                $('#addDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+</block>

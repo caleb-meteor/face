@@ -1,0 +1,257 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.difftotalUrl = "{:$url['difftotalUrl']}";
+thisPageThings.checkClick = true;
+//初始化表单
+thisPageThings.init_form = function(){
+    $('#minquality').numberbox('setValue',60);
+    $('#maxquality').numberbox('setValue',100);
+    $('#btime').datetimebox('setValue',lastDay());
+    $('#etime').datetimebox('setValue',nowTime());
+    $('#search_type').combobox('setValue','0');
+    $("#select_cycle").combobox('setValue','0');
+    $("select[name='statistics_type']").combobox('setValue','0');
+    $('#devs').combotree('clear');
+}
+thisPageThings.search = function(){
+    $.messager.progress({
+        title:'操作提示',
+        msg:'正在获取数据...',
+        interval:200
+    });
+    var minquality = parseInt($('#minquality').numberbox('getValue')); //最小相似度
+    var maxquality = parseInt($('#maxquality').numberbox('getValue')); //最大相似度
+    var btime = $('#btime').datetimebox('getValue'); //开始时间
+    var etime = $('#etime').datetimebox('getValue'); //结束时间
+    var search_type = $('#search_type').combobox('getValue'); //查询类型
+    var select_cycle = $("#select_cycle").combobox('getValue'); //查询周期
+    var statistics_type = $("#search_type").combobox('getValue'); //统计类型
+    var devs = $('#devs').combotree('getValues'); //设备 array()
+    //devs.pop();
+    if(devs.length < 1){ $.messager.alert('信息提示','设备不能为空','info'); return false;}
+    if(minquality > maxquality) {$.messager.alert('信息提示','质量峰值必须大于质量谷值！','info'); return false;}
+    if(checkTime(formatDate(btime),formatDate(etime))) {
+        $.messager.alert('信息提示','结束时间必须大于开始时间','info'); return false;
+    }
+    if(checkTime(formatDate(etime),new Date())) {
+        $.messager.alert('信息提示','结束时间必须小于当前时间','info'); return false;
+    }
+    devs = devs.join(',');
+    $.ajax({
+        url:thisPageThings.difftotalUrl,
+        type:'get',
+        data:{
+            rand:Math.random(),
+            minquality:minquality,
+            maxquality:maxquality,
+            btime:btime,
+            etime:etime,
+            devs:devs
+        },
+        success:function(data){
+            if(data != ''){
+                var showInfo = '';
+                var total = 0;
+                var init_data;
+                $.each(data,function(n,m){
+                    if(n == 0) init_data = m;
+                    console.log(m);
+                    showInfo += '<a href="javascript:void(0)" class="easyui-linkbutton  dev-info"'+
+                                'iconCls="icon-arrow_switch" onclick="thisPageThings.loadData(\''+
+                                minquality+'\',\''+maxquality+'\',\''+btime+'\',\''+etime+
+                                '\',\''+m.devid+'\',\''+m.name+'\',\''+m.devip+'\')" '+
+                                'plain="true">'+m.name+'（'+m.num+'）</a>';
+                    total = total + m.num;
+
+                });
+                showInfo += '<a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-coins" plain="true">总数（'+total+'）</a>';
+                $('#searchResult').html(showInfo);
+                $.parser.parse('#searchResult');
+                thisPageThings.loadData(minquality,maxquality,btime,etime,init_data.devid,init_data.name,init_data.devip);
+            }
+            $.messager.progress('close');
+        }
+    });
+}
+thisPageThings.loadData = function(minquality,maxquality,btime,etime,devs,name,devip){
+    $('#datagrid').datagrid({title:'设备：'+name});
+    $('#datagrid').datagrid('load',{
+        rand:Math.random(),
+        minquality:minquality,
+        maxquality:maxquality,
+        btime:btime,
+        etime:etime,
+        devs:devs,
+        devip:devip
+    });
+    $('#dataPanel').panel('expand');
+}
+function checkDev(v,r,i){
+    var fies = {:$info['devJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.devid == v){
+            name = m.devname;
+        }
+    });
+    return name;
+}
+$(function(){
+	$('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        queryParams:{
+            rand:Math.random()
+        },
+        title:'列表',
+        fitColumns:true,
+        rownumbers:true,
+        //fit:true,
+        singleSelect:true,
+        pageSize:10,
+        pageNumber:1,
+        pageList:[10,20],
+        onClickCell:function(r,f,v){
+            if(f == 'b-fpicurl'){
+                var rowData = $(this).datagrid('getData').rows[r];
+                //var roleid = rowData.roleid;
+                console.log(rowData);
+                $('#bodypic').attr('src',rowData.bodypicurl);
+                $('#facepic').attr('src',rowData.facepicurl);
+                $('#show_img').dialog('open');
+            }
+        },
+        columns:[[
+        {field:'caprecid',title:'抓拍记录id',hidden:true},
+        {field:'dev_devid',title:'抓拍相机',align:'center',formatter:checkDev},
+        {field:'captime',title:'抓拍时间',align:'center'},
+        //{field:'bodypicurl',title:'全身图片',width:200,align:'center'},
+        //{field:'facepicurl',title:'面部特写',width:200,align:'center'},
+        {field:'b-fpicurl',title:'图片信息',align:'center',formatter:function(v,r,i){
+            return '<span style="color:#0E2D5F;cursor:pointer;">点击查看</span>';
+        }},
+        {field:'quality',title:'图片质量',align:'center'}
+        ]],
+        pagination:true
+    });
+    $('#devs').combotree({
+        url:"{:U('Dev/show_dev')}"+'?&rand='+Math.random(),
+        required: true,
+        multiple:true,
+        cascadeCheck:false,
+        onlyLeafCheck:true,
+        onBeforeCheck:function(node){
+            //console.log(node);
+            if(typeof(node.rtspurl) == 'undefined'){
+                return false;
+            }
+        }
+    });
+    $('#search_type').combobox({
+        onSelect:function(node){
+            if(node.value=='0'){
+                $('#statistics_main').hide();
+                $('#select_mian').hide();
+            }else{
+                $('#statistics_main').show();
+                $('#select_mian').show();
+            }
+        }
+    });
+    thisPageThings.init_form();
+});
+</script>
+</block>
+<block name="main">
+<div class="easyui-layout" fit="true">
+<div data-options="region:'north',title:'查询区',iconCls:'icon-drive',split:false" style="height: 120px;">
+<table>
+<form id="searchForm" method="post">
+    <tr>
+        <td>设备名称：
+         <input id="devs" name="devname" type="text">
+         </td>
+        <td>查询方式：
+            <select class="easyui-combobox" type="text" id="search_type" name="search_type" data-options="editable:false" required="true">
+                <option value="0">详细数据</option>
+                <option value="1">数据统计</option>
+            </select>
+         </td>
+
+        <td>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true"
+            onclick="thisPageThings.search()">开始查询</a>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-arrow_rotate_clockwise" plain="true"
+            onclick="thisPageThings.init_form()">数据重置</a>
+         </td>
+    </tr>
+    <tr>
+        <td>质量谷值：
+         <input class="easyui-numberbox" type="text" id="minquality" name="minquality" value="60" data-options="min:0,max:100"/>
+        </td>
+        <td>
+            <div id="select_mian">
+            查询周期：
+            <select class="easyui-combobox" type="text" id="select_cycle" name="select_cycle" data-options="editable:false" required="true">
+                <option value="0">按时查询</option>
+                <option value="1">按天查询</option>
+                <option value="2">按月查询</option>
+            </select>
+            </div>
+
+        </td>
+        <td>开始时间：
+         <input class="easyui-datetimebox" type="text" id="btime" name="btime" data-options="editable:false" required="true"/>
+         </td>
+    </tr>
+    <tr>
+        <td>质量峰值：
+        <input class="easyui-numberbox" type="text" id="maxquality" name="maxquality" value="100" data-options="min:0,max:100"/></td>
+        <td>
+        <div id="statistics_main">
+            统计类型：
+            <select class="easyui-combobox" type="text" id="statistics_type" name="statistics_type" data-options="editable:false" required="true">
+                <option value="0">折线统计</option>
+                <option value="1">直方统计</option>
+            </select>
+        </div>
+         </td>
+        <td>
+        结束时间：
+         <input class="easyui-datetimebox" type="text" id="etime" name="etime" data-options="editable:false" required="true"/>
+        </td>
+    </tr>
+</form>
+</table>
+</div>
+<div data-options="region:'center',title:'数据区',border:false">
+    <!-- 搜索之后路口显示区 -->
+    <div id="searchResult" style="margin: 0 auto;"></div>
+    <div id="dataPanel" class="easyui-panel" data-options="fit:true,collapsed:true,border:false">
+        <table id="datagrid"></table>
+    </div>
+    <div id="init_show" style="text-align: center;margin: 50px 0;">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true">点击*开始查询*统计</a>
+    </div>
+</div>
+</div>
+<div id="show_img" class="easyui-dialog" title="图片区"
+    data-options="iconCls:'icon-save',resizable:true,modal:true,closed:true">
+    <div style="width:400px;height:304px;position:relative;">
+        <div style="position: absolute;top:0;left: 0;">
+            <img id="bodypic" src="" alt="全身照片" width="400px" height="300px">
+        </div>
+        <div style="position: absolute;top:0;right: 0;">
+            <img id="facepic" src="" alt="面部特写" width="100px" height="75px">
+        </div>
+    </div>
+</div>
+</block>

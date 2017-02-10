@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+
+</head>
+<body onresize="size();">
+	<div id="middlebody">
+		<div class="leftList">
+		</div>
+		<div id="centerList">
+			<object ID="CMyControl" CLASSID="clsid:BD0F5A73-0EDB-4382-A08E-6767B65E69B5" style="width:900px;height:700px;" ALIGN=center HSPACE=0 VSPACE=0>
+			</object>
+		</div>
+		<div class="rightList">
+			<button onclick="play();">播放</button>
+			<button onclick="stop();">停止</button>
+		</div>
+	</div>
+	<script language="javascript" for="CMyControl">
+		function size(){
+			var width = document.getElementById("centerList").offsetWidth;
+			var height = document.getElementById("centerList").offsetHeight;
+			CMyControl.setVideoWin(width-6,height-6);
+			CMyControl.style.width=width-6;
+			CMyControl.style.height=height-6;
+		}
+		size();
+		function play(){
+			try{
+				var a = "rtsp://admin:admin123456@192.168.0.15/h264/ch1/main/av_stream";
+				alert('start');
+				CMyControl.playVideo2(a);
+				alert('end');
+			}catch(e){
+				alert(e);
+			}
+		}
+		function stop(){
+			alert('start');
+			CMyControl.stopVideo();
+			alert('end');
+		}
+	</script>
+</body>
+</html>

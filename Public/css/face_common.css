@@ -1,0 +1,38 @@
+.form_m{
+	width: 300px;
+	margin: 5px 5px;
+}
+.form_label{
+	width: 80px;
+	text-align: right;
+	line-height: 22px;
+	font-size: 14px;
+	display: inline-block;
+}
+.form_in{
+	width: 175px;
+	border-radius: 3px;
+	height: 22px;
+	display: inline-block;
+}
+.open_imgdialog{
+	cursor: pointer;
+	width: 200px;
+	height: 150px;
+}
+.add_img{
+	width: 200px;
+	height: 150px;
+	display: inline-block;
+	position: relative;
+}
+.remove-img{
+	position: absolute;
+	top: 0px;
+	right: 0px;
+	display: none;
+}
+.loadedImg{
+	width: 200px;
+	height: 150px;
+}

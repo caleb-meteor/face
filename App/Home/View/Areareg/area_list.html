@@ -1,0 +1,43 @@
+<script>
+function loadData(){
+	$.ajax({
+		url:"{:U('Areareg/data_tree_list')}"+'?&rand='+Math.random(),
+		type:'get',
+		success:function(data){
+			var info = eval(data);
+			$('#area_list').tree('loadData',info);
+		}
+	});
+}
+function loadUserArea(userid){
+	$.ajax({
+		url:"{:U('Areareg/tree_list_all')}"+'?&rand='+Math.random(),
+		type:'get',
+		data:{
+			userid:userid
+		},
+		success:function(data){
+			var info = eval(data);
+			$('#area_list').tree('loadData',info);
+		}
+	});
+}
+function load_dev_area(){
+	$.ajax({
+		url:"{:U('Dev/show_dev')}"+'?&rand='+Math.random(),
+		type:'get',
+		success:function(data){
+			var info = eval(data);
+			$('#area_list').tree('loadData',info);
+		}
+	});
+}
+$(function(){
+	$('#area_list').tree({
+    	animate:true,
+    	lines:true,
+    	cascadeCheck:true
+    });
+});
+</script>
+<ul id="area_list"></ul>

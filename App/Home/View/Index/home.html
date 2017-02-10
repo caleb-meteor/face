@@ -1,0 +1,184 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var devid = '';
+var Mycontrol = {};
+Mycontrol.rtspurl = '';
+$(function(){
+	//定义插件对象
+	var CMyControl = document.getElementById('CMyControl');
+	load_dev_area();
+	$('#datagrid').datagrid({
+		onLoadSuccess:function(info){
+			if(info.total!='0' || info.total!=0){
+				var info = $('#datagrid').datagrid('getRows');
+				$('#alert_pic').attr('src',info[0].alertpicurl);
+				$('#emp_pic').attr('src',info[0].photo);
+			}
+		}
+	});
+	$('#area_list').tree({
+    	onClick:function(data){
+    		//console.log(data);
+    		//console.log(typeof(data.rtspurl));
+    		if(typeof(data.rtspurl) != 'undefined'){
+    			Mycontrol.rtspurl = data.rtspurl;
+    			play();
+    			devid = data.id;
+    			$('#devImage').html('正在加载图片....');
+    			load_devImage();
+
+    		}
+    	}
+    });
+    setInterval(change_alert_img, 10000);
+	setInterval(load_devImage, 5000);
+	init();
+	$(window).resize(function(){
+	  size();
+	});
+});
+function size(){
+	$('#centerList').panel({
+		onResize:function(width,height){
+			$('#CMyControl').width(width-2);
+			$('#CMyControl').height(height-31);
+			try{
+				CMyControl.setVideoWin(width-2,height-31);
+			}catch(e){
+				$.messager.show({
+					title:'信息提示',
+					msg:e
+				});
+			}
+		}
+	});
+}
+function init(){
+	var width = $("#centerList").innerWidth();
+	var height = $("#centerList").innerHeight();
+	$('#CMyControl').width(width);
+	$('#CMyControl').height(height);
+	try{
+		CMyControl.setVideoWin(width,height);
+	}catch(e){
+		$.messager.show({
+			title:'信息提示',
+			msg:e
+		});
+	}
+}
+function play(){
+	if(Mycontrol.rtspurl == ''){
+		$.messager.show({
+			title:'信息提示',
+			msg:'没有可播放的设备，请选择设备后在尝试'
+		});
+		return false;
+	}else{
+		rtspurl = MyControl.rtspurl;
+	}
+	try{
+		CMyControl.playVideo2(rtspurl);
+	}catch(e){
+		$.messager.show({
+			title:'信息提示',
+			msg:e
+		});
+	}
+
+}
+function stop(){
+	try{
+		CMyControl.stopVideo();
+	}catch(e){
+		$.messager.show({
+			title:'信息提示',
+			msg:e
+		});
+	}
+}
+/**
+ * 重新加载数据
+ * @return void
+ */
+function change_alert_img(){
+	//console.log($('#datagrid').datagrid('options').url)
+	$('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+/**
+ * 加载设备图片
+ * @return viod
+ */
+function load_devImage(){
+	if(devid!=''){
+		$.ajax({
+    		url:"{:U('Capturerecord/lastImage')}",
+    		type:'get',
+    		data:{
+    			devid:devid,
+    			rand:Math.random(),
+    			rows:5
+    		},
+    		success:function(data){
+    			imgHtml = '';
+    			if(data){
+    				$.each(data,function(n,m){
+    					imgHtml += '<div><img src="'+m.bodypicurl+'" alt="全身图片" width="100%"></div>';
+    				});
+    			}else{
+    				imgHtml = '<div><img src="__PUBLIC__/images/no_image.png" alt="没有记录" width="100%"></div>';
+    			}
+    			//console.log(imgHtml);
+    			$('#devImage').html(imgHtml);
+    		},
+    		error:function(data){
+    			$('#devImage').html('加载失败,设备可能有问题！');
+    		}
+    	});
+	}
+}
+</script>
+</block>
+<block name="main">
+<div class="easyui-layout" fit="true">
+	<div data-options="region:'center',border:false,split:false">
+		<div class="easyui-layout" fit="true">
+			<div data-options="region:'west',title:'设备',iconCls:'icon-drive',split:true" style="width:20%;">
+				<include file="Areareg/area_list"/>
+			</div>
+			<div data-options="region:'center',title:'视频',iconCls:'icon-film',tools:[
+				{
+					iconCls:'icon-control_play_blue',
+					handler:function(){play();}
+				},{
+					iconCls:'icon-control_stop_blue',
+					handler:function(){stop();}
+				}]" style="width:50%;" id="centerList">
+				<!-- CLASSID 插件在window的ID-->
+				<object ID="CMyControl"
+					CLASSID="clsid:BD0F5A73-0EDB-4382-A08E-6767B65E69B5"
+					style="width:0px;height:0px;display: none;" ALIGN=center HSPACE=0 VSPACE=0>
+				</object>
+			</div>
+			<div data-options="region:'east',title:'图片',iconCls:'icon-image',split:true"
+					style="width:30%;"  id="devImage">
+			</div>
+		</div>
+	</div>
+    <div data-options="region:'south',border:false,split:true" style="height: 250px;">
+    	<div class="easyui-layout" fit="true">
+			<div data-options="region:'west',title:'告警图片',iconCls:'icon-image',split:true" style="width:30%;position: relative;">
+				<img src="" alt="" id="alert_pic" width="50%" style="position: absolute;left: 0;top: 0;">
+				<img src="" alt="" id="emp_pic" width="50%" style="position: absolute;right: 0;top: 0;">
+			</div>
+			<div data-options="region:'center',border:false,iconCls:'icon-page_white_add'" style="width:70%;">
+				<include file="Alertrecord/base_alertrecord" />
+			</div>
+		</div>
+    </div>
+</div>
+</block>

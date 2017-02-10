@@ -1,0 +1,310 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.selectedDataUrl = "{:$url['selectedDataUrl']}";
+thisPageThings.checkClick = true;
+thisPageThings.alertsetid = parent.thisPageThings.alert_cycleid;
+//基本的搜索
+thisPageThings.show = function(){
+    $('#searchForm').form('reset');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+//接收数据之后的操作
+thisPageThings.callback = function(data){
+   // data = eval('('+data+')');
+    $.messager.alert('操作提示',data.message,'info');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random()
+    });
+}
+//打开增加dialog
+thisPageThings.addBar = function(){
+	$('#addDialog').dialog('open');
+}
+//打开编辑dialog
+thisPageThings.editBar = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    if(infos.length > 1){
+        $.messager.alert('操作提示','请选择单个进行操作','info');
+        return false;
+    }
+    if(infos.length == 1){
+        $('#editForm').form('load',infos[0]);
+        $('#editDialog').dialog('open');
+    }
+}
+//提交增加
+thisPageThings.add = function(){
+    if(thisPageThings.checkClick){
+        thisPageThings.checkClick = false;
+        $('#addForm').form('submit',{
+            onSubmit:function(){
+                var validate =  $(this).form('validate');
+                if(validate){
+                    var bHours = $('#add_btime').timespinner('getHours');
+                    var eHours = $('#add_etime').timespinner('getHours');
+                    var bMinutes = $('#add_btime').timespinner('getMinutes');
+                    var eMinutes = $('#add_etime').timespinner('getMinutes');
+                    var bSeconds = $('#add_btime').timespinner('getSeconds');
+                    var eSeconds = $('#add_etime').timespinner('getSeconds');
+                    if(bHours > eHours){
+                        $.messager.alert('操作提示','开始的时间不能大于结束时间','info');
+                        thisPageThings.checkClick = true;
+                        return false;
+                    }else if(bHours == eHours && bMinutes > eMinutes){
+                        $.messager.alert('操作提示','开始的时间不能大于结束时间','info');
+                        thisPageThings.checkClick = true;
+                        return false;
+                    }else if(bMinutes == eMinutes && bSeconds >= eSeconds){
+                        $.messager.alert('操作提示','开始的时间不能大于结束时间','info');
+                        thisPageThings.checkClick = true;
+                        return false;
+                    }
+                }else{
+                    return validate;
+                }
+            },
+            url:thisPageThings.addUrl,
+            success:function(data){
+                thisPageThings.checkClick = true;
+                data = eval('('+data+')');
+                $('#addDialog').dialog('close');
+                $.messager.alert('操作提示',data.message,'info');
+                $('#datagrid').datagrid('load',{
+                    rand:Math.random()
+                });
+            }
+        });
+    }
+}
+//提交编辑
+thisPageThings.edit = function(){
+    $('#editForm').form('submit',{
+        onSubmit:function(){
+            var validate =  $(this).form('validate');
+            if(validate){
+                var bHours = $('#edit_btime').timespinner('getHours');
+                var eHours = $('#edit_etime').timespinner('getHours');
+                var bMinutes = $('#edit_btime').timespinner('getMinutes');
+                var eMinutes = $('#edit_etime').timespinner('getMinutes');
+                var bSeconds = $('#edit_btime').timespinner('getSeconds');
+                var eSeconds = $('#edit_etime').timespinner('getSeconds');
+                if(bHours > eHours){
+                    $.messager.alert('操作提示','开始的时间不能大于结束时间','info');
+                    thisPageThings.checkClick = true;
+                    return false;
+                }else if(bHours == eHours && bMinutes > eMinutes){
+                    $.messager.alert('操作提示','开始的时间不能大于结束时间','info');
+                    thisPageThings.checkClick = true;
+                    return false;
+                }else if(bMinutes == eMinutes && bSeconds >= eSeconds){
+                    $.messager.alert('操作提示','开始的时间不能大于结束时间','info');
+                    thisPageThings.checkClick = true;
+                    return false;
+                }
+            }else{
+                return validate;
+            }
+        },
+        url:thisPageThings.editUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#editDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                rand:Math.random()
+            });
+        }
+    });
+}
+//删除事件
+thisPageThings.remove = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    var ids = [];
+    if(infos.length == 0)
+        return false;
+
+    $.each(infos,function(n,m){
+        var id= m.alertcycleid;
+        ids.push(id);
+    });
+    ids = ids.join(',');
+    $.ajax({
+        url:thisPageThings.removeUrl,
+        type:'post',
+        data:{
+            alertcycleid:ids
+        },
+        success:function(data){
+            thisPageThings.callback(data);
+        }
+    });
+}
+//与alertset父窗口进行交互
+function check_select_data(){
+    //当开始父窗口给出开始命令时 获取数据后立马关闭  并告知父窗口执行完毕
+    if(parent.thisPageThings.start_select){
+        parent.thisPageThings.start_select = false;
+        var datas = $('#datagrid').datagrid('getSelections');
+        parent.thisPageThings.start_selected = true;
+        if(datas.length >0 ){
+            parent.thisPageThings.cycle_select_data = $('#datagrid').datagrid('getSelections');
+        }
+    }
+}
+function check_alertsetid(){
+    if(parent.thisPageThings.alert_cycleid != thisPageThings.alertsetid){
+        thisPageThings.alertsetid = parent.thisPageThings.alert_cycleid;
+        $('#datagrid').datagrid('reload',{
+            rand:Math.random()
+        });
+    }
+}
+//搜索事件
+/*thisPageThings.search = function(){
+{js_search}
+    $('#datagrid').datagrid('load',{
+{js_search_data}
+    });
+}
+{function}*/
+function checkWeek (v,r,i) {
+    var week = new Array();
+    week[1] = '一';
+    week[2] = '二';
+    week[3] = '三';
+    week[4] = '四';
+    week[5] = '五';
+    week[6] = '六';
+    week[7] = '日';
+    v = parseInt(v);
+    return week[v];
+}
+//初始化表格
+$(function(){
+	$('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        queryParams:{
+            rand:Math.random()
+        },
+        title:'列表',
+        fitColumns:true,
+        rownumbers:true,
+        fit:true,
+        pageSize:7,
+        pageNumber:1,
+        pageList:[7,10,15,20,25,30,40,50],
+        columns:[[
+        {field:'id',title:'',checkbox:true},
+        {field:'alertcycleid',title:'ID',align:'center'},
+        {field:'alertweek',title:'星期',width:200,align:'center',formatter:checkWeek},
+        {field:'btime',title:'开始时间',width:200,align:'center'},
+        {field:'etime',title:'结束时间',width:200,align:'center'}
+        ]],
+        pagination:true,
+        onLoadSuccess:function(data){
+            //console.log(data.rows);
+            $.ajax({
+                url:thisPageThings.selectedDataUrl+'?rand='+Math.random(),
+                type:'get',
+                data:{
+                    alertsetid:parent.thisPageThings.alert_cycleid
+                },
+                success:function(result){
+                    if(result!=null){
+                        $.each(result,function(j,k){
+                            $.each(data.rows,function(n,m){
+                                if(k == m.alertcycleid){
+                                    var index = $('#datagrid').datagrid('getRowIndex',m);
+                                    //console.log(index,k);
+                                    $('#datagrid').datagrid('checkRow',index);
+                                }
+                            });
+                        });
+                    }
+                }
+            });
+        }
+    });
+    setInterval(check_select_data, 1500);
+    setInterval(check_alertsetid,1500);
+});
+</script>
+</block>
+<block name="main">
+	<table id="datagrid" toolbar="#toolbar"></table>
+
+    <div id="toolbar">
+        <a href="javascript:void(0)" onclick="thisPageThings.addBar()" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true">添加</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.editBar()" class="easyui-linkbutton" data-options="iconCls:'icon icon-edit',plain:true">修改</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.remove()" class="easyui-linkbutton" data-options="iconCls:'icon icon-delete',plain:true">
+        删除</a>
+    </div>
+<!-- 增加 -->
+    <div id="addDialog" class="easyui-dialog" title="添加" buttons="#addButtons"
+        data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+    	<form id="addForm" method="post">
+            <div class="form_m" style="display: none"><div for="alertcycleid" class="form_label">周期记录ID : </div>
+                <input class="form_in easyui-textbox" type="text" name="alertcycleid"/></div>
+            <div class="form_m"><div for="alertweek" class="form_label">星期 : </div>
+                <select class="form_in easyui-combobox" type="text" name="alertweek">
+                    <option value="1">一</option>
+                    <option value="2">二</option>
+                    <option value="3">三</option>
+                    <option value="4">四</option>
+                    <option value="5">五</option>
+                    <option value="6">六</option>
+                    <option value="7">日</option>
+                </select>
+            </div>
+            <div class="form_m"><div for="btime" class="form_label">开始时间 : </div>
+                <input class="form_in easyui-timespinner" type="text" name="btime" id="add_btime" data-options="showSeconds:true" value="00:00:00" /></div>
+            <div class="form_m"><div for="etime" class="form_label">结束时间 : </div>
+                <input class="form_in easyui-timespinner" type="text" name="etime" id="add_etime" data-options="showSeconds:true" value="23:59:59"/></div>
+    	</form>
+    </div>
+    <div id="addButtons">
+    	<a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.add()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                $('#addDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+<!-- 修改 -->
+    <div id="editDialog" class="easyui-dialog" title="修改" buttons="#editButtons"
+        data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+        <form id="editForm" method="post">
+            <div class="form_m" style="display: none"><div for="alertcycleid" class="form_label">周期记录ID : </div>
+                <input class="form_in easyui-textbox" type="text" name="alertcycleid"/></div>
+            <div class="form_m"><div for="alertweek" class="form_label">星期 : </div>
+                <select class="form_in easyui-combobox" type="text" name="alertweek">
+                    <option value="1">一</option>
+                    <option value="2">二</option>
+                    <option value="3">三</option>
+                    <option value="4">四</option>
+                    <option value="5">五</option>
+                    <option value="6">六</option>
+                    <option value="7">日</option>
+                </select>
+            </div>
+            <div class="form_m"><div for="btime" class="form_label">开始时间 : </div>
+                <input class="form_in easyui-timespinner" type="text" name="btime" id="edit_btime" data-options="showSeconds:true" value="00:00:00"/></div>
+            <div class="form_m"><div for="etime" class="form_label">结束时间 : </div>
+                <input class="form_in easyui-timespinner" type="text" name="etime" id="edit_etime" data-options="showSeconds:true" value="23:59:59"/></div>
+        </form>
+    </div>
+    <div id="editButtons">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.edit()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                $('#editDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+
+</block>

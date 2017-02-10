@@ -1,0 +1,454 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.uplaodImgUrl = "{:$url['uplaodImgUrl']}";
+thisPageThings.get_empImagesUrl = "{:$url['get_empImagesUrl']}";
+thisPageThings.removeImageUrl = "{:$url['removeImageUrl']}";
+thisPageThings.areaid;
+thisPageThings.empid;
+//基本的搜索
+thisPageThings.show = function(){
+    $('#searchForm').form('reset');
+    $('#datagrid').datagrid('load',{
+        areaid:thisPageThings.areaid,
+        rand:Math.random()
+    });
+}
+//接收数据之后的操作
+thisPageThings.callback = function(data){
+   // data = eval('('+data+')');
+    $.messager.alert('操作提示',data.message,'info');
+    $('#datagrid').datagrid('load',{
+        areaid:thisPageThings.areaid,
+        rand:Math.random()
+    });
+}
+//打开增加dialog
+thisPageThings.addBar = function(){
+    if(thisPageThings.areaid==null){
+        $.messager.alert('操作提示','员工的添加是基于区域的请选择区域后进行添加！','info');
+        return false;
+    }
+    $('#addForm').form('load',{areaid:thisPageThings.areaid});
+	$('#addDialog').dialog('open');
+}
+//打开编辑dialog
+thisPageThings.editBar = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    if(infos.length > 1){
+        $.messager.alert('操作提示','请选择单个进行操作','info');
+        return false;
+    }
+    if(infos.length == 1){
+        $('#editForm').form('load',infos[0]);
+        $('#editDialog').dialog('open');
+    }
+}
+//提交增加
+thisPageThings.add = function(){
+	$('#addForm').form('submit',{
+        url:thisPageThings.addUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#addDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                areaid:thisPageThings.areaid,
+                rand:Math.random()
+            });
+        }
+    });
+}
+//提交编辑
+thisPageThings.edit = function(){
+    $('#editForm').form('submit',{
+        url:thisPageThings.editUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#editDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                areaid:thisPageThings.areaid,
+                rand:Math.random()
+            });
+        }
+    });
+}
+//删除时间
+thisPageThings.remove = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    var ids = [];
+    if(infos.length == 0)
+        return false;
+
+    $.each(infos,function(n,m){
+        var id= m.empid;
+        ids.push(id);
+    });
+    ids = ids.join(',');
+    $.ajax({
+        url:thisPageThings.removeUrl,
+        type:'post',
+        data:{
+            empid:ids
+        },
+        success:function(data){
+            thisPageThings.callback(data);
+        }
+    });
+}
+//搜索时间 ----！  需要额外写
+thisPageThings.search = function(){
+    var name = $('#name').val();
+    name = $.trim(name);
+    var phone = $('#phone').val();
+    phone = $.trim(phone);
+    $('#datagrid').datagrid('load',{
+        areaid:thisPageThings.areaid,
+        name:name,
+        phone:phone,
+    });
+}
+//上传照片
+thisPageThings.uploadImg = function(){
+    $('#uploadImg').form('submit',{
+        url:thisPageThings.uplaodImgUrl,
+        method:'post',
+        success:function(data){
+            data = eval('('+data+')');
+            thisPageThings.callback(data);
+            $('#add_dialog').dialog('close');
+            thisPageThings.open_uploadImg(thisPageThings.empid);
+        }
+    })
+}
+//初始化img查看窗
+thisPageThings.init_image = function(){
+    var imgs = $('.add_img').children('img');
+    imgs.attr('src',"__PUBLIC__/images/add_img.jpg");
+    imgs.attr('title',"点击添加");
+    imgs.removeClass('loadedImg');
+    imgs.addClass('open_imgdialog');
+    $(".remove-img").hide();
+    $('.open_imgdialog').click(function(){
+        $('#uploadImg').form('load',{empid:thisPageThings.empid});
+        var libid = $('#imgLib').combobox('getValue');
+        $('#libSure').combobox('setValue',libid);
+        $('#add_dialog').dialog('open');
+
+    });
+    $(".open_imgdialog").bind({
+        mouseenter:function(){$(this).attr('src','__PUBLIC__/images/add_imged.jpg');},
+        mouseout:function(){$(this).attr('src','__PUBLIC__/images/add_img.jpg');}
+    });
+    $('#imgLib').combobox({
+        editable:false,
+        readonly:false
+    });
+}
+
+thisPageThings.open_uploadImg = function(empid){
+    $.ajax({
+        url:thisPageThings.get_empImagesUrl,
+        data:{
+            empid:empid
+        },
+        success:function(data){
+            //初始化img
+            thisPageThings.init_image();
+            //更改img的内容
+            var total = data.length;
+            //若已经上传过照片则不允许更改底库
+            if(total > 0){
+                $('#imgLib').combobox({
+                    readonly:true
+                });
+                $('#imgLib').combobox('setValue',data[0].libid);
+                var i;
+                for (i = total - 1; i >= 0; i--) {
+                    $('#empImg_'+i).attr('src',data[i].photo);
+                    $('#empImg_'+i).attr('title',data[i].photo);
+                    $('#empImg_'+i).removeClass('open_imgdialog');
+                    $('#empImg_'+i).addClass('loadedImg');
+                    $('#empImg_'+i).next(".save_imgInfo").val(data[i].employeephoid);
+                    $('.loadedImg').unbind( "click" );
+                    $('.loadedImg').unbind( "mouseenter" );
+                    $('.loadedImg').unbind("mouseout");
+                    $('.loadedImg').prev(".remove-img").show();
+                }
+                //console.log($('#imgLib').combobox('options'))
+            }
+        }
+    });
+
+}
+function checkPhotolib(v,r,i){
+    var fies = {:$info['photolibJson']};
+    var name = '未入库';
+    $.each(fies,function(n,m){
+        if(m.libid == v){
+            name = m.libname;
+        }
+    });
+    return name;
+}
+function checkAreareg(v,r,i){
+    var fies = {:$info['arearegJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.areaid == v){
+            name = m.areaname;
+        }
+    });
+    return name;
+}
+function checkPhoto (v,r,i) {
+    return '<div style="color:#0E2D5F;cursor:pointer;">点击查看<input type="text" style="display:none;" value="'+v+'"></div>';
+}
+//初始化表格
+$(function(){
+	$('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        queryParams:{
+            areaid:thisPageThings.areaid,
+            rand:Math.random()
+        },
+        title:'员工列表',
+        fitColumns:true,
+        rownumbers:true,
+        fit:true,
+        onClickCell:function(r,f,v){
+            if(f == 'photo' ){
+                var rowData = $(this).datagrid('getData').rows[r];
+                thisPageThings.empid = rowData.empid;
+                thisPageThings.open_uploadImg(thisPageThings.empid);
+                //console.log(rowData);
+                //$('#uploadImg').form('load',{empid:empid});
+                //$('#add_dialog').dialog('open');
+                $('#empInfo').form('load',rowData);
+                $('#img_dialog').dialog('open');
+                }
+        },
+        pageSize:15,
+        pageNumber:1,
+        pageList:[2,5,10,15,20,25,30,40,50],
+        columns:[[
+        {field:'empid',title:'员工id',checkbox:true},
+        {field:'code',title:'工号',align:'center'},
+        {field:'name',title:'姓名',width:200,align:'center'},
+        {field:'sex',title:'性别',width:200,align:'center'},
+        {field:'phone',title:'电话',width:200,align:'center'},
+        {field:'email',title:'邮箱',width:200,align:'center'},
+        //{field:'libnum',title:'底库',width:200,align:'center',formatter:checkPhotolib},
+        {field:'remark',title:'备注',width:200,align:'center'},
+        {field:'areaid',title:'区域',width:200,align:'center',formatter:checkAreareg},
+        {field:'photo',title:'照片',width:200,align:'center',formatter:checkPhoto}
+        ]],
+        pagination:true
+    });
+    loadData();
+    $('#area_list').tree({
+        'onClick':function(node){
+            $('#mu_ser').html(node.text);
+            thisPageThings.areaid = node.id;
+            thisPageThings.show();
+        }
+    });
+    $('.remove-img').click(function(){
+        var employeephoid = $(this).nextAll('.save_imgInfo').val();
+        var photo = $(this).nextAll('img').attr('src');
+        //console.log(employeephoid,photo);
+        $.ajax({
+            url:thisPageThings.removeImageUrl,
+            data:{
+                photo:photo,
+                employeephoid:employeephoid
+            },
+            success:function(data){
+                $.messager.alert('操作提示',data.message,'info');
+                thisPageThings.open_uploadImg(thisPageThings.empid);
+            }
+        });
+    });
+});
+</script>
+</block>
+<block name="main">
+    <div class="easyui-layout" fit="true">
+        <div data-options="region:'west',title:'所有区域',iconCls:'icon-drive',split:false" style="width:20%;background:#eee;">
+            <include file="Areareg/area_list"/>
+        </div>
+       <div data-options="region:'center',border:false,iconCls:'icon-film'" style="width:60%;background:#eee;">
+           <table id="datagrid" toolbar="#toolbar"></table>
+       </div>
+       <div data-options="region:'east',title:'说明',iconCls:'icon-film'" style="width:20%;background:#eee;">
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                数据展示：<span style="color:#0E5AB9;">默认进入员工管理是没有数据，</span>只有点击树状图才会加载数据（当前区域及所有子区域）。</p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span style="color:#0E5AB9;">数据增加：在选中节点时会自动添加到点击节点,</span><br>
+            </p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                数据搜索：<span style="color:#0E5AB9;">所有员工搜索都是基于当前区域的。</span></p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                数据删除：<span style="color:#0E5AB9;">删除员工时会将该员工的所有照片删除。</span></p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                照片上传：<span style="color:#0E5AB9;">
+                如该员工已经上传过照片，则无法将其余照片上传将到其他底库。如想更改底库须将照片全部删除。</span></p>
+       </div>
+    </div>
+    <div id="toolbar">
+        <form id="searchForm" method="post" style="margin-top: 3px;" novalidate>
+             <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon icon-filter" plain="true" onclick="thisPageThings.show()">全部</a>&nbsp;&nbsp;&nbsp;
+                姓名: <input id="name"  class="easyui-textbox" data-options="height:22"  style="width:168px"/>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true" onclick="thisPageThings.search()">搜索</a>
+        </form>
+        <a href="javascript:void(0)" class="easyui-linkbutton"
+            data-options="iconCls:'icon icon-drive'" style="float: right;color:#0E5AB9;">
+        当前区域：<span id="mu_ser">无</span></a>
+        <a href="javascript:void(0)" onclick="thisPageThings.addBar()" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true">添加</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.editBar()" class="easyui-linkbutton" data-options="iconCls:'icon icon-edit',plain:true">修改</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.remove()" class="easyui-linkbutton" data-options="iconCls:'icon icon-delete',plain:true">
+        删除</a>
+    </div>
+<!-- 上传照片 -->
+    <div id="add_dialog" class="easyui-dialog" title="上传照片" buttons="#imgButtons"
+        data-options="iconCls:'icon-save',resizable:true,modal:true,closed:true">
+        <form id="uploadImg" enctype="multipart/form-data" method='POST'>
+            <div class="form_m"><div for="sex" class="form_label">底库 : </div>
+                <select  id="libSure" class=" easyui-combobox form_in" type="text" name="photolib" data-options="editable:false">
+                    <foreach name="info['photolib']" item="photolib">
+                        <option value="{$photolib['libid']}">{$photolib['libname']}</option>
+                    </foreach>
+                </select>
+            </div>
+            <div style="display: none;">
+                <input type="text" class=" form_in easyui-textbox" name="empid"/>
+            </div>
+            <div class="form_m"><div for="photo" class="form_label"></div>
+                <input class="easyui-filebox form_in"  name="photo[]" data-options="prompt:'选择一个或多个照片',buttonText:'选择照片'" multiple required="true">
+            </div>
+        </form>
+    </div>
+    <div id="imgButtons">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.uploadImg()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+    $('#add_dialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+<!-- 查看图片 -->
+    <div id="img_dialog" class="easyui-dialog" title="图片查看"
+        data-options="iconCls:'icon-save',resizable:true,modal:true,closed:true,width:625">
+        <div class="add_img">
+            <form id="empInfo" style="position: absolute;top: 20px;left: 5px;">
+                <p>
+                    姓名：<input class="easyui-textbox" type="text" name="name"/>
+                </p>
+                <p>
+                    工号：<input class="easyui-textbox" type="text" name="code"/>
+                </p>
+                <p>底库：
+                    <select id="imgLib" class="easyui-combobox" type="text" name="photolib">
+                        <foreach name="info['photolib']" item="photolib">
+                            <option value="{$photolib['libid']}">{$photolib['libname']}</option>
+                        </foreach>
+                    </select>
+                </p>
+                <div style="display: none;">
+                    <input class="easyui-textbox" type="text" name="empid"/>
+                </div>
+            </form>
+        </div>
+        <div class="add_img">
+            <a href="javascript:void(0)" class="easyui-linkbutton remove-img" iconCls="icon-bullet_delete" ></a>
+            <img id="empImg_0" class="open_imgdialog" src="__PUBLIC__/images/add_img.jpg" alt="" title="点击添加">
+            <input class="save_imgInfo" type="text" name="employeephoid" style="display: none;"/>
+        </div>
+        <div class="add_img">
+            <a href="javascript:void(0)" class="easyui-linkbutton remove-img" iconCls="icon-bullet_delete"></a>
+            <img id="empImg_1" class="open_imgdialog" src="__PUBLIC__/images/add_img.jpg" alt="" title="点击添加">
+            <input class="save_imgInfo" type="text" name="employeephoid" style="display: none;"/>
+        </div>
+        <div class="add_img">
+            <a href="javascript:void(0)" class="easyui-linkbutton remove-img" iconCls="icon-bullet_delete"></a>
+            <img id="empImg_2" class="open_imgdialog" src="__PUBLIC__/images/add_img.jpg" alt="" title="点击添加">
+            <input class="save_imgInfo" type="text" name="employeephoid" style="display: none;"/>
+        </div>
+        <div class="add_img">
+            <a href="javascript:void(0)" class="easyui-linkbutton remove-img" iconCls="icon-bullet_delete"></a>
+            <img id="empImg_3" class="open_imgdialog" src="__PUBLIC__/images/add_img.jpg" alt="" title="点击添加">
+            <input class="save_imgInfo" type="text" name="employeephoid" style="display: none;"/>
+        </div>
+        <div class="add_img">
+            <a href="javascript:void(0)" class="easyui-linkbutton remove-img" iconCls="icon-bullet_delete"></a>
+            <img id="empImg_4" class="open_imgdialog" src="__PUBLIC__/images/add_img.jpg" alt="" title="点击添加">
+            <input class="save_imgInfo" type="text" name="employeephoid" style="display: none;"/>
+        </div>
+    </div>
+
+<!-- 增加 -->
+    <div id="addDialog" class="easyui-dialog" title="添加" buttons="#addButtons"
+    data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+    	<form id="addForm" method="post">
+            <div class="form_m"><div for="code" class="form_label">工号 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="code"/></div>
+            <div class="form_m"><div for="name" class="form_label">姓名 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="name" required="true"/></div>
+            <div class="form_m"><div for="sex" class="form_label">性别 : </div>
+                <select class=" easyui-combobox form_in" type="text" name="sex">
+                    <option value="男">男</option>
+                    <option value="女">女</option>
+                </select>
+            </div>
+            <div class="form_m"><div for="phone" class="form_label">电话 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="phone"/></div>
+            <div class="form_m"><div for="email" class="form_label">邮箱 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="email"/></div>
+            <div class="form_m"><div for="remark" class="form_label">备注 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="remark"/></div>
+            <div class="form_m" style="display: none"><div for="remark" class="form_label">区域 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="areaid"/></div>
+    	</form>
+    </div>
+    <div id="addButtons">
+    	<a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.add()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+    $('#addDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+<!-- 修改 -->
+    <div id="editDialog" class="easyui-dialog" title="修改" buttons="#editButtons"
+    data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+        <form id="editForm" method="post">
+            <div class="form_m" style="display: none"><div for="empid" class="form_label">员工id : </div>
+                <input class=" form_in easyui-textbox" type="text" name="empid"/></div>
+            <div class="form_m"><div for="code" class="form_label">工号 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="code"/></div>
+            <div class="form_m"><div for="name" class="form_label">姓名 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="name" required="true"/></div>
+            <div class="form_m"><div for="sex" class="form_label">性别 : </div>
+                <select class=" easyui-combobox form_in" type="text" name="sex">
+                    <option value="男">男</option>
+                    <option value="女">女</option>
+                </select>
+            </div>
+            <div class="form_m"><div for="phone" class="form_label">电话 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="phone"/></div>
+            <div class="form_m"><div for="email" class="form_label">邮箱 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="email"/></div>
+            <div class="form_m"><div for="remark" class="form_label">备注 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="remark"/></div>
+        </form>
+    </div>
+    <div id="editButtons">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.edit()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+    $('#editDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+
+</block>

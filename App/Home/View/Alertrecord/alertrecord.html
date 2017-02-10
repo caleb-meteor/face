@@ -1,0 +1,272 @@
+<extend name="layouts:master" />
+<block name="link">
+<style>
+.serach_input{
+    margin: 5px 0;
+}
+td{
+    font-size: 12px;
+}
+</style>
+</block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.getemppicUrl = "{:$url['getemppicUrl']}";
+thisPageThings.checkClick = true;
+thisPageThings.is_alert = false;
+//搜索事件
+thisPageThings.search = function(){
+    var minscore = parseInt($('#minscore').numberbox('getValue')); //最小相似度
+    var maxscore = parseInt($('#maxscore').numberbox('getValue')); //最大相似度
+    var btime = $('#btime').datetimebox('getValue'); //开始时间
+    var etime = $('#etime').datetimebox('getValue'); //结束时间
+    var devs = $('#devs').combotree('getValues'); //设备 array()
+    var employee_name = $('#employee_name').textbox('getValue'); //告警人员
+    //devs.pop();
+    //if(devs.length < 1){ $.messager.alert('信息提示','设备不能为空','info'); return false;}
+    if(minscore > maxscore) {$.messager.alert('信息提示','相似峰值必须大于相似谷值！','info'); return false;}
+    if(checkTime(formatDate(btime),formatDate(etime))) {
+        $.messager.alert('信息提示','结束时间必须大于开始时间','info'); return false;
+    }
+    if(checkTime(formatDate(etime),new Date())) {
+        $.messager.alert('信息提示','结束时间必须小于当前时间','info'); return false;
+    }
+    if(devs.length > 0){
+        devs = devs.join(',');
+    }
+    //console.log(devs,employee_name);
+    thisPageThings.is_alert = true
+    $('#dataPanel').panel('expand');
+    $('#datagrid').datagrid('load',{
+        rand:Math.random(),
+        minscore:minscore,
+        maxscore:maxscore,
+        btime:btime,
+        etime:etime,
+        devs:devs,
+        employee_name:employee_name
+    });
+    $('#init_show').hide();
+}
+thisPageThings.init_form = function(){
+    $('#minscore').numberbox('setValue',60);
+    $('#maxscore').numberbox('setValue',100);
+    $('#btime').datetimebox('setValue',lastDay());
+    $('#etime').datetimebox('setValue',nowTime());
+    $('#employee_name').textbox('setValue',''); //告警人员
+    $('#devs').combotree('clear');
+}
+function checkDev(v,r,i){
+    var fies = {:$info['devJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.devid == v){
+            name = m.devname;
+        }
+    });
+    return name;
+}
+function checkSerinfo(v,r,i){
+    var fies = {:$info['serinfoJson']};
+    var name;
+    $.each(fies,function(n,m){
+        if(m.serid == v){
+            name = m.sername;
+        }
+    });
+    return name;
+}
+//初始化表格
+$(function(){
+    $('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        queryParams:{
+            rand:Math.random()
+        },
+        //title:'列表',
+        fitColumns:true,
+        rownumbers:true,
+        fit:true,
+        pageSize:15,
+        pageNumber:1,
+        singleSelect:true,
+        pageList:[15,30,45],
+        onClickCell:function(r,f,v){
+            var rowData = $(this).datagrid('getData').rows[r];
+            console.log(rowData);
+            if(f == 'cappic'){
+                //var roleid = rowData.roleid;
+                $('#bodypic').attr('src',rowData.bodypicurl);
+                $('#facepic').attr('src',rowData.facepicurl);
+                $('#captpic').attr('src',rowData.alertpicurl);
+                $('#cap_pic').dialog('open');
+            }
+            if(f == 'alert'){
+                $('#emppic').attr('src',rowData.photo);
+                $('#capt_pic').attr('src',rowData.alertpicurl)
+                $('#alert_pic').dialog('open');
+               /* $.ajax({
+                    url:thisPageThings.getemppicUrl,
+                    type:'get',
+                    data:{
+                        rand:Math.random(),
+                        empid:rowData.employee_empid
+                    },
+                    success:function(data){
+                        if(data == '' || data == null) {
+                            $.messager.alert('信息提示','无法获取告警人员图片','warning');
+                        }else{
+                            $('#emppic').attr('src',data[0].photo);
+                            $('#capt_pic').attr('src',rowData.alertpicurl)
+                            $('#alert_pic').dialog('open');
+                        }
+                    },
+                    error:function(data){
+                        $.messager.alert('信息提示','无法获取告警人员图片','warning');
+                    }
+                });*/
+
+            }
+        },
+        onLoadSuccess: function (data) {
+            if(thisPageThings.is_alert){
+                if (data.total == 0) {
+                    $('#marks').text('经查询无结果');
+                    $('#init_show').show();
+                    $('#dataPanel').panel('collapse');
+                }else{
+                    $('#init_show').hide();
+                    $('#dataPanel').panel('expand');
+                }
+            }
+        },
+        columns:[[
+        {field:'alertreocrdid',title:'告警id',hidden:true},
+        {field:'dev_devid',title:'拍摄设备',width:200,align:'center',formatter:checkDev},
+        {field:'alerttime',title:'告警时间',width:200,align:'center'},
+        //{field:'bodypicurl',title:'全身图片',width:200,align:'center'},
+        //{field:'facepicurl',title:'面部特写',width:200,align:'center'},
+        {field:'employee_empid',title:'告警人员Id',hidden:true},
+        {field:'name',title:'告警人员',width:200,align:'center'},
+        //{field:'alertpicurl',title:'被告警图片',width:200,align:'center'},
+        {field:'alert',title:'告警对比',width:200,align:'center',formatter:function(v,r,i){
+            return '<span style="color:#0E2D5F;cursor:pointer;">点击查看</span>';
+        }},
+        {field:'cappic',title:'告警图',width:200,align:'center',formatter:function(v,r,i){
+            return '<span style="color:#0E2D5F;cursor:pointer;">点击查看</span>';
+        }},
+        {field:'score',title:'相识度',width:200,align:'center'},
+
+        {field:'serid',title:'服务',width:200,align:'center',formatter:checkSerinfo}
+        //{field:'capresultid',title:'抓拍记录',width:200,align:'center'}
+        ]],
+        pagination:true
+    });
+    $('#devs').combotree({
+        url:"{:U('Dev/show_dev')}"+'?&rand='+Math.random(),
+        multiple:true,
+        cascadeCheck:false,
+        onlyLeafCheck:true,
+        onBeforeCheck:function(node){
+            //console.log(node);
+            if(typeof(node.rtspurl) == 'undefined'){
+                return false;
+            }
+        }
+    });
+    thisPageThings.init_form();
+    //console.log(nowTime());
+});
+</script>
+</block>
+<block name="main">
+<div class="easyui-layout" fit="true">
+    <div data-options="region:'north',title:'查询区',iconCls:'icon-drive',split:false" style="height: 120px;">
+<table>
+<form id="searchForm" method="post">
+    <tr>
+        <td>设备名称：
+         <input id="devs" name="devname" type="text">
+         </td>
+        <td><div id="statistics_main">
+            告警人员：
+            <input class="easyui-textbox" type="text" id="employee_name" name="employee_name"/></div>
+         </td>
+         <div style="color: red;"></div>
+        <td>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true"
+            onclick="thisPageThings.search()">开始查询</a>
+
+         </td>
+    </tr>
+    <tr>
+        <td>相似谷值：
+         <input class="easyui-numberbox" type="text" id="minscore" name="score" value="60" data-options="min:0,max:100"/>
+        </td>
+        <td>开始时间：
+            <input class="easyui-datetimebox" type="text" id="btime" name="btime" data-options="editable:false" required="true"/>
+        </td>
+        <td>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-arrow_rotate_clockwise" plain="true"
+            onclick="thisPageThings.init_form()">数据重置</a>
+         </td>
+    </tr>
+    <tr>
+        <td>相似峰值：
+        <input class="easyui-numberbox" type="text" id="maxscore" name="maxscore" value="100" data-options="min:0,max:100"/></td>
+        <td>
+            结束时间：
+            <input class="easyui-datetimebox" type="text" id="etime" name="etime" data-options="editable:false" required="true"/>
+         </td>
+        <td>
+
+        </td>
+    </tr>
+</form>
+</table>
+    </div>
+    <div data-options="region:'center',title:'数据区',border:false" style="background:#eee;">
+    <div id="dataPanel" class="easyui-panel" data-options="fit:true,collapsed:true,border:false">
+        <table id="datagrid"></table>
+    </div>
+
+
+        <div id="init_show" style="text-align: center;margin: 50px 0;">
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" id="marks" plain="true">点击*开始查询*统计</a>
+        </div>
+        <div id="gr" style="display: none;"></div>
+    </div>
+</div>
+<div id="cap_pic" class="easyui-dialog" title="图片区"
+    data-options="iconCls:'icon-save',resizable:true,modal:true,closed:true">
+    <div style="width:400px;height:304px;position:relative;float: left;">
+        <div style="position: absolute;top:0;left: 0;">
+            <img id="bodypic" src="" alt="全身照片" width="400px" height="300px">
+        </div>
+        <div style="position: absolute;top:0;right: 0;">
+            <img id="facepic" src="" alt="面部特写" width="100px" height="75px">
+        </div>
+    </div>
+    <div style="width:400px;height:304px;float: right;">
+        <img id="captpic" src="" alt="告警图" width="400px" height="300px">
+    </div>
+</div>
+<div id="alert_pic" class="easyui-dialog" title="图片区"
+    data-options="iconCls:'icon-save',resizable:true,modal:true,closed:true,width:820">
+    <div style="width:400px;height:304px;position:relative;float: left;">
+        <div style="position: absolute;top:0;left: 0;">
+            <img id="emppic" src="" alt="全身照片" width="400px" height="300px">
+        </div>
+    </div>
+    <div style="float: right;">
+        <img id="capt_pic" src="" alt="告警图" width="400px" height="300px">
+    </div>
+</div>
+</block>

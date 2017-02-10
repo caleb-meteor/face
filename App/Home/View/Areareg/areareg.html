@@ -1,0 +1,245 @@
+<extend name="layouts:master" />
+<block name="link"></block>
+<block name="src">
+<script>
+var thisPageThings = {};
+//操作所需的url
+thisPageThings.datagridUrl = "{:$url['datagridUrl']}";
+thisPageThings.addUrl = "{:$url['addUrl']}";
+thisPageThings.editUrl = "{:$url['editUrl']}";
+thisPageThings.removeUrl = "{:$url['removeUrl']}";
+thisPageThings.areaid;
+//基本的搜索
+thisPageThings.show = function(){
+    $('#searchForm').form('reset');
+    $('#datagrid').datagrid('load',{
+        areaid:thisPageThings.areaid,
+        rand:Math.random()
+    });
+}
+//接收数据之后的操作
+thisPageThings.callback = function(data){
+   // data = eval('('+data+')');
+    $.messager.alert('操作提示',data.message,'info');
+    $('#datagrid').datagrid('load',{
+        areaid:thisPageThings.areaid,
+        rand:Math.random()
+    });
+}
+//打开增加dialog
+thisPageThings.addBar = function(){
+    $('#addForm').form('load',{fatherareaid:thisPageThings.areaid});
+    console.log(thisPageThings.areaid);
+	$('#addDialog').dialog('open');
+}
+//打开编辑dialog
+thisPageThings.editBar = function(){
+    var infos = $('#datagrid').datagrid('getSelections');
+    if(infos.length > 1){
+        $.messager.alert('操作提示','请选择单个进行操作','info');
+        return false;
+    }
+    if(infos.length == 1){
+        $('#editForm').form('load',infos[0]);
+        $('#editDialog').dialog('open');
+    }
+}
+//提交增加
+thisPageThings.add = function(){
+	$('#addForm').form('submit',{
+        url:thisPageThings.addUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#addDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                areaid:thisPageThings.areaid,
+                rand:Math.random()
+            });
+            loadData();
+        }
+    });
+}
+//提交编辑
+thisPageThings.edit = function(){
+    $('#editForm').form('submit',{
+        url:thisPageThings.editUrl,
+        success:function(data){
+            data = eval('('+data+')');
+            $('#editDialog').dialog('close');
+            $.messager.alert('操作提示',data.message,'info');
+            $('#datagrid').datagrid('load',{
+                areaid:thisPageThings.areaid,
+                rand:Math.random()
+            });
+            loadData();
+        }
+    });
+}
+//删除事件
+thisPageThings.remove = function(){
+    var nodes = $('#area_list').tree('getChecked');
+    var ids = [];
+    if(nodes.length == 0)
+        return false;
+    $.messager.confirm('重要提醒','删除前请确定位于该区域下的设备/人员已无用/不在职！',function(r){
+        if(r){
+            $.each(nodes,function(n,m){
+                var id= m.id;
+                ids.push(id);
+            });
+            ids = ids.join(',');
+            $.ajax({
+                url:thisPageThings.removeUrl,
+                type:'post',
+                data:{
+                    areaid:ids
+                },
+                success:function(data){
+                    thisPageThings.callback(data);
+                    loadData();
+                }
+            });
+        }
+    });
+}
+//搜索事件 ----！  需要额外写
+thisPageThings.search = function(){
+    var areaname = $('#areaname').val();
+    areaname = $.trim(areaname);
+    $('#datagrid').datagrid('load',{
+        areaid:thisPageThings.areaid,
+        areaname:areaname
+    });
+}
+function checkAreareg(v,r,i){
+    var fies = {:$info['arearegJson']};
+    var name = '主区域';
+    $.each(fies,function(n,m){
+        if(m.areaid == v){
+            name = m.areaname;
+        }
+    });
+    return name;
+}
+//初始化表格
+$(function(){
+	$('#datagrid').datagrid({
+        url:thisPageThings.datagridUrl,
+        method:'get',
+        title:'区域列表',
+        fitColumns:true,
+        rownumbers:true,
+        fit:true,
+        pageSize:15,
+        pageNumber:1,
+        pageList:[2,5,10,15,20,25,30,40,50],
+        columns:[[
+        {field:'areaid',title:'区域id',hidden:true},
+        {field:'areaname',title:'区域名称',width:200,align:'center'},
+        {field:'areacode',title:'区域编号',width:200,align:'center'},
+        {field:'rperson',title:'联系人',width:200,align:'center'},
+        {field:'rphone',title:'联系方式',width:200,align:'center'},
+        {field:'fatherareaid',title:'父区域',width:200,align:'center',formatter:checkAreareg},
+        ]],
+        pagination:true
+    });
+    loadData();
+    $('#area_list').tree({
+        checkbox:true,
+        'onClick':function(node){
+            $('#mu_area').html(node.text);
+            thisPageThings.areaid = node.id;
+            thisPageThings.show();
+        }
+    });
+});
+</script>
+</block>
+<block name="main">
+    <div class="easyui-layout" fit="true">
+        <div data-options="region:'west',title:'所有区域',iconCls:'icon-drive',split:false" style="width:20%;background:#eee;">
+            <a href="javascript:void(0)" onclick="thisPageThings.remove()" class="easyui-linkbutton" iconCls="icon icon-delete"
+                style="background-color: #00A8E9;">区域删除</a>
+            <include file="Areareg/area_list"/>
+        </div>
+       <div data-options="region:'center',border:false,iconCls:'icon-film'" style="width:60%;background:#eee;">
+           <table id="datagrid" toolbar="#toolbar"></table>
+       </div>
+       <div data-options="region:'east',title:'说明',iconCls:'icon-film'" style="width:20%;background:#eee;">
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                数据展示：<span style="color:#0E5AB9;">默认进入区域管理是没有数据，</span>只有点击树状图（自身用户能管理的区域）才会加载数据（当前区域及所有子区域）。</p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;
+                <span style="color:#0E5AB9;">数据增加：在选中节点时会自动添加到点击节点,</span><br>
+                <span style="color:red;">在未选择中节点时添加区域将创将一个顶级的根区域</span><br>
+                同时当前用户-父用户会自动添加管理的区域，
+                <span style="color:#0E5AB9;">子用户需要当前用户去赋权。</span>
+
+            </p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;
+                数据删除：<span style="color:#0E5AB9;">虽然勾选时有的会被选中但实际该区域未完全在管辖范围之内，因此只会自动删除自己能管理的区域，</span>同时当前用户，父用户，子用户会自动删除已被删的管理区域。<span style="color:red;">注意：删除该区域时会将该区域下的设备人员一并删除</span></p>
+            <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                数据搜索：<span style="color:#0E5AB9;">所有区域搜索都是基于选择区域的。</span></p>
+       </div>
+    </div>
+    <div id="toolbar">
+        <form id="searchForm" method="post" style="margin-top: 3px;" novalidate>
+             <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon icon-filter" plain="true" onclick="thisPageThings.show()">全部</a>&nbsp;&nbsp;&nbsp;
+                区域名称: <input id="areaname"  class="easyui-textbox" data-options="height:22"  style="width:168px"/>
+            <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-search" plain="true" onclick="thisPageThings.search()">搜索</a>
+        </form>
+        <a href="javascript:void(0)" class="easyui-linkbutton"
+            data-options="iconCls:'icon icon-drive'" style="float: right;color:#0E5AB9;">
+        当前区域：<span id="mu_area">无</span></a>
+        <a href="javascript:void(0)" onclick="thisPageThings.addBar()" class="easyui-linkbutton" data-options="iconCls:'icon-add',plain:true">添加</a>
+        <a href="javascript:void(0)" onclick="thisPageThings.editBar()" class="easyui-linkbutton" data-options="iconCls:'icon icon-edit',plain:true">修改</a>
+        <!-- <a href="javascript:void(0)" onclick="thisPageThings.remove()" class="easyui-linkbutton" data-options="iconCls:'icon icon-delete',plain:true">
+        删除</a> -->
+    </div>
+<!-- 增加 -->
+    <div id="addDialog" class="easyui-dialog" title="添加区域" buttons="#addButtons"
+    data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+    	<form id="addForm" method="post">
+            <div class="form_m"><div for="areaname" class="form_label">区域名称 : </div>
+                <input class="form_in easyui-textbox" type="text" name="areaname" required="true"/></div>
+            <div class="form_m"><div for="areacode" class="form_label">区域编号 : </div>
+                <input class="form_in easyui-textbox" type="text" name="areacode" required="true"/></div>
+            <div class="form_m"><div for="rperson" class="form_label">联系人 : </div>
+                <input class="form_in easyui-textbox" type="text" name="rperson"/></div>
+            <div class="form_m"><div for="rphone" class="form_label">联系方式 : </div>
+                <input class="form_in easyui-textbox" type="text" name="rphone"/></div>
+            <div class="form_m" style="display: none"><div for="fatherareaid" class="form_label">父区域 : </div>
+                <input class="form_in easyui-textbox" type="text" name="fatherareaid">
+            </div>
+    	</form>
+    </div>
+    <div id="addButtons">
+    	<a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.add()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+            $('#addDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+<!-- 修改 -->
+    <div id="editDialog" class="easyui-dialog" title="修改区域" buttons="#editButtons"
+            data-options="iconCls:'icon-add',resizable:true,modal:true,closed:true">
+        <form id="editForm" method="post">
+            <div class="form_m" style="display: none"><div for="areaid" class="form_label">区域id : </div>
+                <input class=" form_in easyui-textbox" type="text" name="areaid"/></div>
+            <div class="form_m"><div for="areaname" class="form_label">区域名称 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="areaname" required="true"/></div>
+            <div class="form_m"><div for="areacode" class="form_label">区域编号 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="areacode" required="true"/></div>
+            <div class="form_m"><div for="rperson" class="form_label">联系人 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="rperson"/></div>
+            <div class="form_m"><div for="rphone" class="form_label">联系方式 : </div>
+                <input class=" form_in easyui-textbox" type="text" name="rphone"/></div>
+            <div class="form_m" style="display: none"><div for="fatherareaid" class="form_label">父区域 : </div>
+                <input class="form_in easyui-textbox" type="text" name="fatherareaid">
+            </div>
+        </form>
+    </div>
+    <div id="editButtons">
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.edit()" style="width:90px">确认</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+                    $('#editDialog').dialog('close')" style="width:90px">取消</a>
+    </div>
+</block>

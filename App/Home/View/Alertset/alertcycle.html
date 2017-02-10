@@ -1,0 +1,121 @@
+<script>
+thisPageThings.click_rm = function(obj){
+	$(obj).parent().hide();
+	$(obj).parent().children(".easyui-timespinner").timespinner({disabled:true});
+}
+thisPageThings.cycle = function(){
+	$("#cycle_form").form('submit',{
+		success:function(data){
+			$('#alertcycleDialog').dialog('close');
+			data = eval('('+data+')');
+			thisPageThings.callback(data);
+		}
+	});
+}
+thisPageThings.show_cycle = function(){
+	$('.weeks').show();
+	$(".weeks").children(".easyui-timespinner").timespinner({disabled:false});
+}
+function loadTime (alertsetid){
+	$.ajax({
+		url:"{:U('Alertset/alertTime')}",
+		type:'get',
+		data:{
+			alertsetid:alertsetid,
+			rand:Math.random()
+		},
+		success:function(data){
+			var ids = ['1','2','3','4','5','6','7'];
+			$.each(data,function(n,m){
+				var week = m.alertweek;
+				for (var i = ids.length - 1; i >= 0; i--) {
+					if(week == ids[i]){
+						ids.splice(i, 1);
+					}
+				}
+				$('#btime_'+week).timespinner('setValue',m.btime);
+				$('#etime_'+week).timespinner('setValue',m.etime);
+				$("#week_"+week).show();
+				$("#week_"+week).children(".easyui-timespinner").timespinner({disabled:false});
+			});
+			if(ids.length > 0){
+				for (var i = ids.length - 1; i >= 0; i--) {
+					var id = ids[i];
+					$("#week_"+id).hide();
+					$("#week_"+id).children(".easyui-timespinner").timespinner({disabled:true});
+				}
+			}
+		}
+	});
+}
+$(function(){
+	$('#choose').combobox({
+		onSelect:function(v){
+			if(v.value!=''){
+				loadTime(v.value);
+			}
+		}
+	});
+})
+</script>
+<div id="alertcycleDialog" class="easyui-dialog" title="设置周期" buttons="#alertcycleButtons"
+        data-options="iconCls:'icon-book_key',resizable:true,modal:true,shadow:false,closed:true">
+    <form action="{:U('Alertset/alertcycle')}" id="cycle_form">
+    	<input type="text" name="alertsetid" id="alertsetid" style="display: none;"/>
+	<div class="weeks" id="week_1">
+		<div for="libid" class="form_label">星期一 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[1]" id="btime_1" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[1]" id="etime_1" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+    <div class="weeks" id="week_2">
+		<div for="libid" class="form_label">星期二 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[2]" id="btime_2" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[2]" id="etime_2" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+    <div class="weeks" id="week_3">
+		<div for="libid" class="form_label">星期三 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[3]" id="btime_3" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[3]" id="etime_3" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+    <div class="weeks" id="week_4">
+		<div for="libid" class="form_label">星期四 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[4]" id="btime_4" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[4]" id="etime_4" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+    <div class="weeks" id="week_5">
+		<div for="libid" class="form_label">星期五 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[5]" id="btime_5" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[5]" id="etime_5" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+    <div class="weeks" id="week_6">
+		<div for="libid" class="form_label">星期六 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[6]" id="btime_6" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[6]" id="etime_6" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+    <div class="weeks" id="week_7">
+		<div for="libid" class="form_label">星期日 : </div>
+        <input class="easyui-timespinner" type="text" name="btime[7]" id="btime_7" data-options="value:'00:00:00',showSeconds:true"/>至
+        <input class="easyui-timespinner" type="text" name="etime[7]" id="etime_7" data-options="value:'23:59:59',showSeconds:true"/>
+        <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-clear" onclick="thisPageThings.click_rm(this)"></a>
+    </div>
+	</form>
+ </div>
+ <div id="alertcycleButtons">
+    	<label for="choose" class="label">选用已有配置 : </label>
+        <select class="easyui-combobox" name="choose" id="choose">
+        	<option value="">请选择</option>
+            <foreach name="info['alertsetids']" item="alertsetid">
+                <option value="{$alertsetid['alertsetid']}">方案{$alertsetid['alertsetid']}</option>
+            </foreach>
+        </select>
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-arrow_undo" onclick="thisPageThings.show_cycle()">还原删除</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" onclick="thisPageThings.cycle()">确认</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-cancel" onclick="javascript:
+            $('#alertcycleDialog').dialog('close')">取消</a>
+</div>

@@ -1,0 +1,162 @@
+<extend name="layouts:master" />
+<block name="link">
+<style>
+.sm_form_in_3{
+    width: 60px;
+    margin: 0 2px 0 3px;
+    display: inline-block;
+}
+.sm_form_in_4{
+    width: 50px;
+    display: inline-block;
+}
+.form_m{
+    width: 500px;
+}
+</style>
+</block>
+<block name="src">
+<script>
+var info = "{:$info}";
+$(function(){
+	$('#add').click(function(){
+		if($('.easyui-validatebox').validatebox('isValid')){
+            //var data = $('#addForm').serialize();
+           // $('#save_json').val(data);
+            $('#addForm').submit();
+            //console.log($('#save_json').val());
+            /*$.ajax({
+                url:"{:U('Tpmanager/parseJson')}",
+                type:'get',
+                data:{
+                    data:data
+                },
+                success:function(data){
+                    $.messager.alert('结果提示',data,'info');
+                }
+            });*/
+		}else{
+			$('.easyui-validatebox').focus();
+		}
+	});
+	if(info!='')
+		$.messager.alert('结果提示',info,'info');
+    var i=1;
+    var j=1;
+    var k=1;
+    $('#add_col').click(function(){
+        var col_html = '<div class="form_m" id="col"><div for="name" class="form_label">字段配置 : </div>'+
+            '<input class="easyui-textbox sm_form_in_4" type="text" name="col['+i+'][col_c]" placeholder="字段" />'+
+            '<input class="easyui-textbox sm_form_in_4" type="text" name="col['+i+'][col_b]" placeholder="字段中文" />'+
+            '<select class="easyui-combobox sm_form_in_4" name="col['+i+'][col_type]" placeholder="字段类型">'+
+                '<option value="textbox">文本</option>'+
+                '<option value="select">选择</option>'+
+                '<option value="numberbox">数字框</option>'+
+                '<option value="datebox">日期框</option>'+
+                '<option value="datetimebox">日期时间框</option>'+
+                '<option value="timespinner">时间微调</option>'+
+                '<option value="slider">滑块</option>'+
+            '</select>'+
+            '<select class="easyui-combobox sm_form_in_4" name="col['+i+'][col_check]" placeholder="字段必填">'+
+                '<option value="0">非必填</option>'+
+                '<option value="1">必填</option>'+
+            '</select>'+
+        '</div>';
+        $('#col_add').append(col_html);
+        i++;
+    });
+
+    $('#add_search').click(function(){
+        var search_html = '<div class="form_m" id="search"><div for="name" class="form_label">搜索字段 : </div>'+
+            '<input class="easyui-textbox sm_form_in_3" type="text" name="search['+j+'][search_c]" placeholder="搜索字段"/>'+
+            '<input class="easyui-textbox sm_form_in_3" type="text" name="search['+j+'][search_b]" placeholder="搜索中文"/>'+
+            '<select class="easyui-combobox sm_form_in_3" name="search['+j+'][search_check]" placeholder="搜索类型">'+
+                '<option value="txet">文本</option>'+
+                '<option value="select">选择</option>'+
+            '</select>'+
+        '</div>';
+        $('#search_add').append(search_html);
+        j++;
+    });
+    $('#add_link').click(function(){
+        var link_html = '<div class="form_m" id="link"><div for="name" class="form_label">关联字段 : </div>'+
+            '<input class="easyui-textbox sm_form_in_3" type="text" name="link['+k+'][link_c]" placeholder="关联字段"/>'+
+            '<input class="easyui-textbox sm_form_in_3" type="text" name="link['+k+'][link_tab]" placeholder="关联表"/>'+
+            '<input class="easyui-textbox sm_form_in_3" type="text" name="link['+k+'][link_id]" placeholder="表id"/>'+
+            '<input class="easyui-textbox sm_form_in_3" type="text" name="link['+k+'][link_name]" placeholder="id-name"/>'+
+        '</div>';
+        $('#link_add').append(link_html);
+        k++;
+    });
+});
+</script>
+</block>
+<block name="main">
+<form method="post" style="display: none;" id="save">
+    <input type="text" id="save_json" name="save_json">
+</form>
+<div id="tpmanager" class="easyui-dialog" title="添加用户" buttons="#addButtons" data-options="iconCls:'icon-add',resizable:true,modal:true,closed:false">
+    <form id="addForm" method="post">
+    	<div class="form_m"><div for="name" class="form_label">新增模块 : </div>
+    		<input class="easyui-validatebox form_in easyui-textbox" type="text" name="addname" data-options="required:true" /></div>
+        <div class="form_m"><div for="name" class="form_label">建立视图 : </div>
+            <select class="easyui-combobox form_in" type="text" name="is_view">
+                <option value="1">是</option>
+                <option value="0">否</option>
+            </select>
+        </div>
+        <div class="form_m"><div for="name" class="form_label">建立模型 : </div>
+            <select class="easyui-combobox form_in" type="text" name="is_model">
+                <option value="1">是</option>
+                <option value="0">否</option>
+            </select>
+        </div>
+        <div class="form_m"><div for="name" class="form_label">建立控制器 : </div>
+            <select class="easyui-combobox form_in" type="text" name="is_controller">
+                <option value="1">是</option>
+                <option value="0">否</option>
+            </select>
+        </div>
+        <div class="form_m" id="col"><div for="name" class="form_label">字段配置 : </div>
+            <input class="easyui-textbox sm_form_in_4" type="text" name="col[0][col_c]" placeholder="字段"/>
+            <input class="easyui-textbox sm_form_in_4" type="text" name="col[0][col_b]" placeholder="字段中文"/>
+            <select class="easyui-combobox sm_form_in_4" name="col[0][col_type]" placeholder="字段类型">
+                <option value="textbox">文本</option>
+                <option value="select">选择</option>
+                <option value="numberbox">数字框</option>
+                <option value="datebox">日期框</option>
+                <option value="datetimebox">日期时间框</option>
+                <option value="timespinner">时间微调</option>
+                <option value="slider">滑块</option>
+            </select>
+            <select class="easyui-combobox sm_form_in_4" name="col[0][col_check]" placeholder="字段必填">
+                <option value="0">非必填</option>
+                <option value="1">必填</option>
+            </select>
+        </div>
+        <div id="col_add"></div>
+        <div class="form_m" id="search"><div for="name" class="form_label">搜索字段 : </div>
+            <input class="easyui-textbox sm_form_in_3" type="text" name="search[0][search_c]" placeholder="搜索字段"/>
+            <input class="easyui-textbox sm_form_in_3" type="text" name="search[0][search_b]" placeholder="搜索中文"/>
+            <select class="easyui-combobox sm_form_in_3" name="search[0][search_type]" placeholder="搜索类型">
+                <option value="text">文本</option>
+                <option value="select">选择</option>
+            </select>
+        </div>
+        <div id="search_add"></div>
+        <div class="form_m" id="col"><div for="name" class="form_label">关联配置 : </div>
+            <input class="easyui-textbox sm_form_in_4" type="text" name="link[0][link_c]" placeholder="关联字段"/>
+            <input class="easyui-textbox sm_form_in_4" type="text" name="link[0][link_tab]" placeholder="关联表"/>
+            <input class="easyui-textbox sm_form_in_4" type="text" name="link[0][link_id]" placeholder="表id"/>
+            <input class="easyui-textbox sm_form_in_4" type="text" name="link[0][link_name]" placeholder="id-name"/>
+        </div>
+        <div id="link_add"></div>
+    </form>
+</div>
+<div id="addButtons">
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" style="width:90px;" id="add_col">添加配置</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" style="width:90px;" id="add_search">添加搜索</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" style="width:90px;" id="add_link">添加关联</a>
+    <a href="javascript:void(0)" class="easyui-linkbutton" iconCls="icon-ok" style="width:90px" id="add">添加</a>
+</div>
+</block>

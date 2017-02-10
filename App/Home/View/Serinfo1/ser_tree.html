@@ -1,0 +1,20 @@
+<script>
+function loadData(){
+	$.ajax({
+		url:"{:U('Serinfo/data_tree_list')}"+'?&rand='+Math.random(),
+		type:'get',
+		success:function(data){
+			var info = eval(data);
+			$('#ser_list').tree('loadData',info);
+		}
+	});
+}
+$(function(){
+	$('#ser_list').tree({
+    	animate:true,
+    	lines:true,
+    	cascadeCheck:true
+    });
+});
+</script>
+<ul id="ser_list"></ul>

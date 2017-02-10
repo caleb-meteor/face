@@ -1,0 +1,81 @@
+<extend name="layouts:master" />
+<block name="title"><title>SharpVisionLogin</title></block>
+<block name='link'>
+    <style type="text/css">
+        body{
+            background:url('__PUBLIC__/images/bg_log.jpg') no-repeat center 0 #f4f4f4;
+        }
+        #loginBox{
+            width: 268px;
+            height: 200px;
+            position: absolute;
+            top: 290px;
+            left: 46%;
+        }
+        #info{
+            position: absolute;
+            top: 450px;
+            left: 46%;
+            color: red;
+        }
+        #d1{
+            position: absolute;
+            top: 250px;
+            left: 46%;
+            border:1px solid #aaa;
+        }
+    </style>
+</block>
+<block name='src'>
+<script>
+var info = "{:$info}";
+function login () {
+    var username = $.trim($("#username").val());
+    var userpassword = $.trim($("#userpassword").val());
+    if(username==''){
+         $('#info').html('用户名不能为空');
+        return false;
+    }
+    if(userpassword==''){
+        $('#info').html('密码不能为空');
+        return false;
+    }
+    $('#loginBox').submit();
+}
+$(function(){
+    $('#loginButton').click(function(){
+        login();
+    });
+    $('#resetButton').click(function(){
+        $('#loginBox').form('clear');
+    });
+    $('#info').html(info);
+    document.onkeydown=keyDownSearch;
+
+    function keyDownSearch(e) {
+        // 兼容FF和IE和Opera
+        var theEvent = e || window.event;
+        var code = theEvent.keyCode || theEvent.which || theEvent.charCode;
+        if (code == 13) {
+            login();
+            return false;
+        }
+        return true;
+    }
+});
+</script>
+</block>
+<block name="main">
+    <div id="info"></div>
+    <!-- 登陆框 -->
+    <form id="loginBox" method="post">
+        <div style="margin-bottom:10px">
+            <input class="easyui-validatebox easyui-textbox" id="username" autofocus="autofocus" style="width:100%;height:40px;padding:12px;" data-options="prompt:'用户名',iconCls:'icon-man',iconWidth:38,validType:'length[3,10]',required:true" name="username">
+        </div>
+        <div style="margin-bottom:20px">
+            <input class="easyui-validatebox easyui-textbox" type="password" id="userpassword" style="width:100%;height:40px;padding:12px;" data-options="prompt:'密码',iconCls:'icon-lock',iconWidth:38,required:true" name="userpassword">
+        </div>
+        <a href="javascript:void(0)" class="easyui-linkbutton" style="width:30%;margin-left:48px;padding:5px;" id="loginButton">登录</a>
+        <a href="javascript:void(0)" class="easyui-linkbutton" style="width:30%;padding:5px;" id="resetButton">重置</a>
+    </form>
+</block>
