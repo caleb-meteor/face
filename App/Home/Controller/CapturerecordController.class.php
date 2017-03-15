@@ -366,4 +366,106 @@ class CapturerecordController extends CommonController
         //$sqls = $ipdb->getLastSql();
         return($data);
     }
+        //插入数据到指定表
+    public function insertAllData()
+    {
+        G('begin');
+        $btime = I('btime','2017-03-14 00:00:00');
+        $etime = I('etime','2017-03-15 23:00:00');
+        $minquality = I('minquality',10);
+        $maxquality = I('maxquality',100);
+        $dev = I('dev','4');
+        $ip = I('ip','localhost');
+        $insertTable = I('insertTable','a1489539532');
+         //解析出时间段内的所有表记录
+        $bdate = explode(' ', $btime)[0];
+        $edate = explode(' ', $etime)[0];
+        $datearr = $this->get_twoMonthsDates($bdate,$edate,'Ymd');
+        //$data = array();
+        $data['total'] = 0;
+        $data['rows'] = array();
+        //删选条件
+        $check['quality'] = array(array('EGT',$minquality),array('ELT',$maxquality));
+        $check['captime'] = array(array('EGT',$btime),array('ELT',$etime));
+        //写出原生sql语句 方便之后的union查询
+        $sql = "captime >= '$btime' AND captime <= '$etime' AND quality >= $minquality AND quality <= $maxquality";
+        //查询条件
+        $check['dev_devid'] = $dev;
+        $connection = 'mysql://'.C('DB_USER').':'.C('DB_PWD').'@'.$ip.':'.C('DB_PORT').'/'.C('DB_NAME').'#'.C('DB_CHARSET');
+        $tabs = $this->get_dbTables($connection);
+        foreach ($datearr as $date) {
+            if(in_array('capturerecord_'.$date, $tabs)){
+                $table[] = 'capturerecord_'.$date;
+            }
+        }
+        if(!empty($table)){
+            $db = M($table[0],'',$connection);
+            $db->where($check);
+        }else{
+            return $data;
+        }
+        foreach ($table as $key => $tab) {
+            if($key != 0) $db->union('select * from '.$tab.' where '.$sql.' AND dev_devid = '.$dev);
+        }
+        $allData = $db->where($check)->select();
+        $allDb  = M($insertTable,'',$connection);
+        $allDb->addAll($allData);
+        //dump($allData);
+        unset($allData);
+        G('end');
+        echo G('begin','end',6).'s';
+    }
+    //curl实现多路口查询
+    public function curlMuti()
+    {
+        G('begin');
+        //创建临时表
+        $tab = 'a'.time();
+        //创建表
+        $sql = 'DROP TABLE IF EXISTS `'.$tab.'`;CREATE TABLE `'.$tab.'` (
+          `id` int(11) NOT NULL AUTO_INCREMENT,
+          `caprecid` int(11) NOT NULL,
+          `captime` datetime DEFAULT NULL,
+          `bodypicurl` varchar(128) DEFAULT NULL,
+          `facepicurl` varchar(128) DEFAULT NULL,
+          `quality` float DEFAULT NULL,
+          `dev_devid` int(11) DEFAULT NULL,
+          PRIMARY KEY (`id`)
+        ) ENGINE=MyISAM AUTO_INCREMENT=1 DEFAULT CHARSET=utf8';
+        $connection = 'mysql://'.C('DB_USER').':'.C('DB_PWD').'@'.C('DB_HOST').':'.C('DB_PORT').'/'.C('DB_NAME').'#'.C('DB_CHARSET');
+        $db = M('','',$connection);
+        $db->query($sql);
+        $devs = range(3,6);
+        $urls = [];
+        foreach ($devs as $dev) {
+            $urls[] = 'http://localhost/face/index.php/Home/Capturerecord/insertAllData?dev='.$dev.'&insertTable='.$tab;
+        }
+        $mh = curl_multi_init();
+        foreach ($urls as $i => $url) {
+            $chs[$i] = curl_init();
+            curl_setopt($chs[$i], CURLOPT_URL, $url);
+            curl_setopt($chs[$i], CURLOPT_HEADER, 0);
+            curl_setopt($chs[$i], CURLOPT_RETURNTRANSFER, 1);
+            curl_multi_add_handle($mh,$chs[$i]);
+        }
+        $running = null;
+        // 执行批处理句柄
+        do {
+            curl_multi_exec($mh, $running);
+        } while ($running > 0);
+        $res = array();
+        foreach ($chs as $ch) {
+            $res[] = curl_multi_getcontent($ch);
+        }
+        foreach ($chs as $ch) {
+            curl_multi_remove_handle($ch);
+        }
+        curl_multi_close($mh);
+        echo $tab;
+        dump($devs);
+        dump($urls);
+        dump($res);
+        G('end');
+        echo G('begin','end',6).'s';
+    }
 }
